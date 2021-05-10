@@ -1,0 +1,20 @@
+package cwst.com.repositories;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+
+import cwst.com.entities.FullBranch;
+
+@Repository
+public interface FullBranchRepo extends CrudRepository<FullBranch, String>, ProcedureRepoCustom {
+
+	@Query(value = "select f from FullBranch f where f.branchCode in (select t.id.branchCode from CwstSysUsrBranch t where t.id.username = ?1)")
+	List<FullBranch> findByUserName(String username);
+	
+	@Query(value = "select f from FullBranch f")
+	List<FullBranch> findAll();
+
+}

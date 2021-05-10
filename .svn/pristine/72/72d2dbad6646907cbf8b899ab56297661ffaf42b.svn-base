@@ -1,0 +1,18 @@
+package cwst.com.services;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import cwst.com.entities.CwstCrdDetailChecker;
+import cwst.com.repositories.CwstCrdDetailCheckerRepo;
+
+public class CwstCrdDetailServiceImpl implements CwstCrdDetailService {
+
+	@Autowired
+	CwstCrdDetailCheckerRepo cwstCrdDetailCheckerRepo;
+
+	@Override
+	public CwstCrdDetailChecker findByCrdId(long crdid) {
+		return cwstCrdDetailCheckerRepo.findByCrdId(crdid);
+	}
+
+}

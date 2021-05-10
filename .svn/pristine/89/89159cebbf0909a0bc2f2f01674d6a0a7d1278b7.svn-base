@@ -1,0 +1,416 @@
+package cwst.com.views;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import javax.annotation.PostConstruct;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
+
+import com.vaadin.data.Item;
+import com.vaadin.data.Validator;
+import com.vaadin.data.validator.StringLengthValidator;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.FontAwesome;
+import com.vaadin.shared.ui.label.ContentMode;
+import com.vaadin.spring.annotation.SpringView;
+import com.vaadin.ui.AbstractSelect.ItemCaptionMode;
+import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
+import com.vaadin.ui.ComboBox;
+import com.vaadin.ui.CustomComponent;
+import com.vaadin.ui.DateField;
+import com.vaadin.ui.FormLayout;
+import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Label;
+import com.vaadin.ui.Notification;
+import com.vaadin.ui.Notification.Type;
+import com.vaadin.ui.RichTextArea;
+import com.vaadin.ui.Table;
+import com.vaadin.ui.Table.CellStyleGenerator;
+import com.vaadin.ui.Table.ColumnGenerator;
+import com.vaadin.ui.TextField;
+import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
+import com.vaadin.ui.themes.ValoTheme;
+
+import cwst.com.CwSupportToolUI;
+import cwst.com.SecurityUtils;
+import cwst.com.TimeConverter;
+import cwst.com.services.CwstCaseDetailService;
+import cwst.com.services.CwstSendmailService;
+import cwst.com.services.FullBranchService;
+
+@SpringView(name = CardWorkSupportToolView.VIEW_NAME, ui = CwSupportToolUI.class)
+public class CardWorkSupportToolView extends CustomComponent implements View {
+
+	private static final long serialVersionUID = 1L;
+	public static final String VIEW_NAME = "cardwork-support-tool";
+	@Autowired
+	private CwstCaseDetailService cwstCaseDetailService;
+	@Autowired
+	private CwstSendmailService cwstSendmailService;
+	@Autowired
+	private FullBranchService fullBranchService;
+	private Table table;
+	private final DateField dfDate = new DateField("Date");
+	private final TextField tfProcessingNo = new TextField("Processing No");
+	private final Button btSearch = new Button("Search");
+	private final ComboBox cbCaseType = new ComboBox("Case Type");
+	private final ComboBox cbAssignment = new ComboBox("Assignment");
+	private TimeConverter timeConverter = new TimeConverter();
+	private static final Logger LOGGER = LoggerFactory.getLogger(CardWorkSupportToolView.class);
+
+	@PostConstruct
+	void init() {
+		initUI();
+	}
+
+	@Override
+	public void enter(ViewChangeEvent event) {
+		initData("", "", "", 1, "");
+	}
+
+	@SuppressWarnings("unchecked")
+	private void initUI() {
+		final VerticalLayout root = new VerticalLayout();
+		root.setSizeFull();
+		root.setMargin(true);
+		root.setSpacing(true);
+
+		// Form field
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setSpacing(true);
+		formLayout.addStyleName("formfield-text-right");
+
+		cbAssignment.addContainerProperty("description", String.class, "");
+		cbAssignment.setItemCaptionMode(ItemCaptionMode.PROPERTY);
+		cbAssignment.setItemCaptionPropertyId("description");
+
+		cbAssignment.addItem("all").getItemProperty("description").setValue("All");
+		cbAssignment.addItem("assign").getItemProperty("description").setValue("Assigned");
+		cbAssignment.addItem("nonassign").getItemProperty("description").setValue("Unassigned");
+		cbAssignment.setNullSelectionItemId("all");
+
+		// Case type
+		cbCaseType.addContainerProperty("description", String.class, "");
+		cbCaseType.setItemCaptionMode(ItemCaptionMode.PROPERTY);
+		cbCaseType.setItemCaptionPropertyId("description");
+		cbCaseType.addItem("all").getItemProperty("description").setValue("List All");
+		cbCaseType.setNullSelectionItemId("all");
+
+		// Danh sach loai case user duoc cap quyen tuong ung tren cardwork
+		List<Object[]> listBranch = fullBranchService.getBrachPermission("linhntd1");
+		StringBuilder sBuilder = new StringBuilder();
+		listBranch.forEach(s -> {
+			sBuilder.append("''" + s[0].toString() + "'',");
+			final Item item = cbCaseType.addItem(String.valueOf(s[0]));
+			item.getItemProperty("description").setValue(String.valueOf(s[1]));
+
+		});
+		cbCaseType.setWidth(250f, Unit.PIXELS);
+
+		btSearch.setIcon(FontAwesome.SEARCH);
+		btSearch.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSearch.addClickListener(evt -> {
+			cmdButtonCreateData();
+		});
+
+		dfDate.setDateFormat("dd/MM/yyyy");
+		dfDate.setWidth(250f, Unit.PIXELS);
+
+		tfProcessingNo.setWidth(250f, Unit.PIXELS);
+
+		formLayout.addComponent(cbAssignment);
+		formLayout.addComponent(cbCaseType);
+		formLayout.addComponent(dfDate);
+		formLayout.addComponent(tfProcessingNo);
+		formLayout.addComponent(btSearch);
+		
+		table = new Table();
+		table.addContainerProperty("Id", String.class, ""); // 0
+		table.addContainerProperty("Creation User", String.class, ""); // 1
+		table.addContainerProperty("Creation Time", BigDecimal.class, ""); // 2
+		table.addContainerProperty("CIF", String.class, ""); // 3
+		table.addContainerProperty("Customer Name", String.class, ""); // 4
+		table.addContainerProperty("Case Type", String.class, ""); // 5
+		table.addContainerProperty("Description", String.class, ""); // 6
+		table.addContainerProperty("Processing No", String.class, ""); // 7
+		table.addContainerProperty("Get Case Time", BigDecimal.class, ""); // 8
+		table.addContainerProperty("Case Orgtr", String.class, ""); // 9
+		table.addContainerProperty("Group Id", String.class, ""); // 10
+		table.addContainerProperty("User Id", String.class, ""); // 11
+		table.addContainerProperty("Remarks", String.class, ""); // 12
+		table.addContainerProperty("Case Result", String.class, ""); // 13
+		table.addContainerProperty("Case Remind", CheckBox.class, null);// 14
+		table.addContainerProperty("Case Remind Content", String.class, ""); // 15
+		table.addContainerProperty("Note", String.class, "");// 16
+		table.setColumnWidth("Case Remind Content", 200);
+		table.setStyleName("wordwrap-table");
+
+		table.setVisibleColumns(new Object[] { "Creation User", "Creation Time", "CIF", "Customer Name", "Case Type", "Description", "Processing No",
+				"Get Case Time", "User Id", "Remarks", "Case Result", "Case Remind", "Case Remind Content", "Note" });
+		table.addGeneratedColumn("Creation Time", new ColumnGenerator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Object generateCell(Table source, Object itemId, Object columnId) {
+				return timeConverter.convertStrToDtTranx(source.getContainerProperty(itemId, columnId).getValue().toString());
+			}
+		});
+
+		table.addGeneratedColumn("Get Case Time", new ColumnGenerator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Object generateCell(Table source, Object itemId, Object columnId) {
+				return timeConverter.convertStrToDtTranx(source.getContainerProperty(itemId, columnId).getValue().toString());
+			}
+		});
+
+		table.addGeneratedColumn("Case Remind Content", new ColumnGenerator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Object generateCell(Table source, Object itemId, Object columnId) {
+				final String html = source.getContainerProperty(itemId, columnId).getValue().toString();
+				return new Label(html, ContentMode.HTML);
+			}
+		});
+
+		table.setSizeFull();
+		table.setCellStyleGenerator(new CellStyleGenerator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getStyle(Table source, Object itemId, Object propertyId) {
+				String sColor = "";
+				if (String.valueOf(source.getItem(itemId).getItemProperty("Case Result").getValue()).equals("NEW")) {
+					sColor = "blue";
+				}
+				if (String.valueOf(propertyId).equals("Case Remind Content")) {
+					return "wordwrap-table";
+				}
+				return sColor;
+			}
+		});
+		root.addComponent(formLayout);
+		root.addComponent(table);
+		setCompositionRoot(root);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void initData(String sCaseType, String sProcessingNo, String sDay, int page, String sScbAssignment) {
+		List<Object[]> list = null;
+		if (!StringUtils.hasText(sCaseType) && !StringUtils.hasText(sProcessingNo) && !StringUtils.hasText(sDay) && !StringUtils.hasText(sDay)) {
+			list = cwstCaseDetailService.findAll("", "", "", 1, "");
+		} else {
+			list = cwstCaseDetailService.findAll(sCaseType, sProcessingNo, sDay, page, sScbAssignment);
+		}
+
+		table.removeAllItems();
+		if (list != null && !list.isEmpty()) {
+			list.forEach(rs -> {
+				Object newItemId = table.addItem();
+				Item row1 = table.getItem(newItemId);
+				row1.getItemProperty("Id").setValue(rs[0]);
+				row1.getItemProperty("Creation User").setValue(rs[1]);
+				row1.getItemProperty("Creation Time").setValue(rs[2]);
+				row1.getItemProperty("CIF").setValue(rs[3].toString());
+				row1.getItemProperty("Customer Name").setValue(rs[4]);
+				row1.getItemProperty("Case Type").setValue(rs[5]);
+				row1.getItemProperty("Description").setValue(rs[6]);
+				row1.getItemProperty("Processing No").setValue(rs[7]);
+				row1.getItemProperty("Get Case Time").setValue(rs[8]);
+				row1.getItemProperty("Case Orgtr").setValue(rs[9]);
+				row1.getItemProperty("Group Id").setValue(rs[10]);
+				row1.getItemProperty("User Id").setValue(rs[11]);
+				row1.getItemProperty("Remarks").setValue(rs[13]);
+				row1.getItemProperty("Case Result").setValue(rs[18]);
+				CheckBox checkBox = new CheckBox();
+				if ((Boolean.valueOf(rs[20].toString())) != (Boolean.valueOf(rs[22].toString()))) {
+					checkBox.setValue(true);
+				} else {
+					checkBox.setValue(false);
+				}
+				if (String.valueOf(rs[18]).equals("NEW") || Boolean.valueOf(rs[22].toString())
+						|| !SecurityUtils.getUserCardWord().equals(rs[11].toString())) {
+					checkBox.setReadOnly(true);
+				}
+				checkBox.setImmediate(true);
+				checkBox.addValueChangeListener(evt -> {
+
+					if ((Boolean) evt.getProperty().getValue()) {
+						cmdTableShowCreateRemindContent(table.getItem(newItemId));
+					} else {
+						cmdTableDeleteRemindContent(table.getItem(newItemId));
+					}
+				});
+				row1.getItemProperty("Case Remind").setValue(checkBox);
+				if ((Boolean.valueOf(rs[20].toString())) == true) {
+					row1.getItemProperty("Case Remind Content").setValue(rs[21] != null ? String.valueOf(rs[21]) : "");
+				} else {
+					row1.getItemProperty("Case Remind Content").setValue(rs[23] != null ? String.valueOf(rs[23]) : "");
+				}
+				row1.getItemProperty("Note").setValue(rs[25]);
+
+			});
+		}
+	}
+
+	private void cmdButtonCreateData() {
+		String sCaseType;
+		String sDay;
+		int page = 1;
+		String sProcessingNo;
+		String sScbAssignment;
+		if (cbCaseType.getValue() != null) {
+			sCaseType = cbCaseType.getValue().toString();
+		} else {
+			sCaseType = "";
+		}
+		if (dfDate.getValue() != null) {
+			sDay = timeConverter.convertDateTimeToStr(dfDate.getValue()).substring(0, 8);
+		} else {
+			sDay = "";
+		}
+		if (tfProcessingNo.getValue() != null) {
+			sProcessingNo = tfProcessingNo.getValue().trim();
+		} else {
+			sProcessingNo = "";
+		}
+		if (cbAssignment.getValue() != null) {
+			sScbAssignment = cbAssignment.getValue().toString();
+		} else {
+			sScbAssignment = "";
+		}
+		initData(sCaseType, sProcessingNo, sDay, page, sScbAssignment);
+	}
+
+	private void closeWindow() {
+		getUI().getWindows().forEach(s -> {
+			getUI().removeWindow(s);
+		});
+	}
+
+	private void cmdTableDeleteRemindContent(Item item) {
+		cwstSendmailService.delete(item.getItemProperty("Processing No").getValue().toString(), "REMIND");
+		cmdButtonCreateData();
+	}
+
+	private void cmdTableShowCreateRemindContent(Item item) {
+		closeWindow();
+		final Window window = new Window("Case Remind");
+		window.setWidth(50f, Unit.PERCENTAGE);
+		window.setHeight(40f, Unit.PERCENTAGE);
+		window.setModal(true);
+		window.addCloseListener(closeEvt -> {
+			getUI().removeWindow(closeEvt.getWindow());
+		});
+
+		final String sCaseId = String.valueOf(item.getItemProperty("Processing No").getValue());
+		final String sCreUsr = String.valueOf(item.getItemProperty("Creation User").getValue());
+		final BigDecimal sCreatationTime = new BigDecimal(item.getItemProperty("Creation Time").getValue().toString());
+		final String sCustName = String.valueOf(item.getItemProperty("Customer Name").getValue());
+		final String sRemarks = String.valueOf(item.getItemProperty("Customer Name").getValue());
+		final String sCif = String.valueOf(item.getItemProperty("CIF").getValue());
+		final String sCaseType = String.valueOf(item.getItemProperty("Case Type").getValue());
+		final String sMailContent = String.valueOf(item.getItemProperty("Case Remind Content").getValue());
+		final String sDescription = String.valueOf(item.getItemProperty("Description").getValue());
+		final String sCaseResult = String.valueOf(item.getItemProperty("Case Result").getValue());
+		final String sUserId = String.valueOf(item.getItemProperty("User Id").getValue());
+		final String sGrpId = String.valueOf(item.getItemProperty("Group Id").getValue());
+
+		final FormLayout formField = new FormLayout();
+		formField.setSpacing(true);
+		formField.setMargin(true);
+
+		final RichTextArea rtaEmailContent = new RichTextArea("Email Content");
+		if (sMailContent != null) {
+			rtaEmailContent.setValue(sMailContent);
+		}
+		rtaEmailContent.setValidationVisible(false);
+		rtaEmailContent.addValidator(new StringLengthValidator("Tối đa 500 ký tự", 0, 500, false));
+
+		// final TextArea tfContent = new TextArea("Email Content");
+		// if (sMailContent != null) {
+		// tfContent.setValue(sMailContent);
+		// }
+
+		final TextField tfCreUsr = new TextField("Creation User");
+		tfCreUsr.setValue(sCreUsr);
+		tfCreUsr.setReadOnly(true);
+
+		final TextField tfCaseType = new TextField("Case Type");
+		tfCaseType.setValue(sCaseType);
+		tfCaseType.setReadOnly(true);
+
+		final TextField tfCustName = new TextField("Customer Name");
+		tfCustName.setValue(sCustName);
+		tfCustName.setReadOnly(true);
+
+		final TextField tfCif = new TextField("CIF");
+		tfCif.setValue(sCif);
+		tfCif.setReadOnly(true);
+
+		final Button btSave = new Button("Save");
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.addClickListener(clickEvent -> {
+			if (rtaEmailContent.getValue() != null) {
+				try {
+					rtaEmailContent.validate();
+					// final String sContent = String.format(
+					// "Creation User: %s <br/>" + "Creation Time: %s <br/>" + "Customer Name: %s <br/>" + "CIF: %s <br/>" + "Case Type: %s <br/>"
+					// + "Description: %s <br/>" + "Result: %s <br/>" + "Checker: %s <br/> %s",
+					// sCreUsr, sCreatationTime, sCustName, sCif, sCaseType, sDescription, sCaseResult, sUserId,
+					// String.valueOf(tfContent.getValue()));
+
+					final String email = cwstSendmailService.getEmailUserCreate(sCreUsr);
+					if (rtaEmailContent.getValue() != null && !rtaEmailContent.getValue().equals("")) {
+						cwstSendmailService.save(String.valueOf(rtaEmailContent.getValue()), sCaseId, "REMIND", email);
+						cwstCaseDetailService.save(sCaseId, sCreUsr, sCreatationTime, sCif, sCustName, sCaseType, sDescription, sGrpId, sUserId,
+								sRemarks, sCaseResult);
+						cmdButtonCreateData();
+						closeWindow();
+					} else {
+						Notification.show("Nội dung email không để trống", Type.ERROR_MESSAGE);
+					}
+				} catch (Validator.InvalidValueException ex) {
+					rtaEmailContent.setValidationVisible(true);
+				} catch (Exception ex) {
+					LOGGER.error(ex.getMessage());
+
+				}
+			}
+		});
+
+		final Button btClose = new Button("Close");
+		btClose.setIcon(FontAwesome.CLOSE);
+		btClose.addClickListener(closeEvent -> {
+			closeWindow();
+		});
+
+		final HorizontalLayout btLayout = new HorizontalLayout();
+		btLayout.setSpacing(true);
+		btLayout.addComponent(btSave);
+		btLayout.addComponent(btClose);
+
+		formField.addComponent(tfCreUsr);
+		formField.addComponent(tfCaseType);
+		formField.addComponent(tfCustName);
+		formField.addComponent(tfCif);
+		formField.addComponent(rtaEmailContent);
+
+		formField.addComponent(btLayout);
+
+		window.setContent(formField);
+
+		getUI().addWindow(window);
+	}
+
+}

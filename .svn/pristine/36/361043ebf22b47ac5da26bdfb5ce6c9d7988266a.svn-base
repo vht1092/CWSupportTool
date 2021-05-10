@@ -1,0 +1,21 @@
+package cwst.com.repositories;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import cwst.com.entities.CwstSysUser;
+
+@Repository
+public interface SysUserRepo extends JpaRepository<CwstSysUser, Long> {
+	@Query(value = "select f from CwstSysUser f")
+	List<CwstSysUser> findAll();
+
+	CwstSysUser findOneByUsername(String username);
+
+	@Query(value = "select px_az006_uid from az006@im where trim(fx_az006_usr_email_addr) =:email", nativeQuery = true)
+	String findUserCardWorks(@Param("email") String email);
+}

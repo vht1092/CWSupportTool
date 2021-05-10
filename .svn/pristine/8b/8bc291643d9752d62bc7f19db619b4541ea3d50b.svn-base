@@ -1,0 +1,23 @@
+package cwst.com.services;
+
+import cwst.com.entities.CwstCaseDetail;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public interface CwstCaseDetailService {
+	void scanData();
+
+	void getNewestData();
+
+	List<Object[]> findAll(String type, String processingno, String date, int page, String assign);
+
+	List<Object[]> findAll();
+
+	CwstCaseDetail findOneByIdCaseId(String caseid);
+	
+	int getiNumberRow();
+
+	void save(String caseid, String creuser, BigDecimal cretms, String cif, String custname, String casetype, String desc, String groupid, String userid,
+			String remarks, String caseresult);
+}

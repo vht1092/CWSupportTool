@@ -1,0 +1,262 @@
+package cwst.com.entities;
+
+import javax.persistence.*;
+import java.io.Serializable;
+import java.math.BigDecimal;
+
+/**
+ * The persistent class for the CWST_CASE_DETAIL database table.
+ */
+@Entity
+@Table(name = "CWST_CASE_DETAIL")
+@NamedQuery(name = "CwstCaseDetail.findAll", query = "SELECT c FROM CwstCaseDetail c")
+public class CwstCaseDetail implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "CASE_ID", unique = true, nullable = false, length = 50)
+	private String caseId;
+
+	@Column(length = 1)
+	private String box;
+
+	@Column(name = "CASE_BOX", length = 15)
+	private String caseBox;
+
+	@Column(name = "CASE_ORGTR", length = 25)
+	private String caseOrgtr;
+
+	@Column(name = "CASE_RESULT", length = 10)
+	private String caseResult;
+
+	@Column(name = "CASE_TYPE", length = 20)
+	private String caseType;
+
+	@Column(length = 19)
+	private String cif;
+
+	@Column(name = "COMPLETE_TMS", precision = 17)
+	private BigDecimal completeTms;
+
+	@Column(name = "CRE_TMS", precision = 17)
+	private BigDecimal creTms;
+
+	@Column(name = "CRE_USER", length = 25)
+	private String creUser;
+
+	@Column(name = "CUST_NAME", length = 110)
+	private String custName;
+
+	@Column(length = 100)
+	private String description;
+
+	@Column(name = "GROUP_ID", length = 8)
+	private String groupId;
+
+	@Column(length = 150)
+	private String note;
+
+	@Column(name = "PROCESSING_NO", length = 50)
+	private String processingNo;
+
+	@Column(length = 150)
+	private String remarks;
+
+	@Column(length = 1)
+	private String stat;
+
+	@Column(name = "UPDATE_STAMP", precision = 17)
+	private BigDecimal updateStamp;
+
+	@Column(name = "USER_LEVEL", precision = 1)
+	private BigDecimal userLevel;
+
+	@Column(name = "USR_ID", length = 8)
+	private String usrId;
+
+	@Column(name = "BRCH_NAME", length = 100)
+	private String brchName;
+
+	@Column(name = "BRCH_CDE", length = 5)
+	private String brchCde;
+
+	public CwstCaseDetail() {
+	}
+
+	public String getCaseId() {
+		return this.caseId;
+	}
+
+	public void setCaseId(String caseId) {
+		this.caseId = caseId;
+	}
+
+	public String getBox() {
+		return this.box;
+	}
+
+	public void setBox(String box) {
+		this.box = box;
+	}
+
+	public String getCaseBox() {
+		return this.caseBox;
+	}
+
+	public void setCaseBox(String caseBox) {
+		this.caseBox = caseBox;
+	}
+
+	public String getCaseOrgtr() {
+		return this.caseOrgtr;
+	}
+
+	public void setCaseOrgtr(String caseOrgtr) {
+		this.caseOrgtr = caseOrgtr;
+	}
+
+	public String getCaseResult() {
+		return this.caseResult;
+	}
+
+	public void setCaseResult(String caseResult) {
+		this.caseResult = caseResult;
+	}
+
+	public String getCaseType() {
+		return this.caseType;
+	}
+
+	public void setCaseType(String caseType) {
+		this.caseType = caseType;
+	}
+
+	public String getCif() {
+		return this.cif;
+	}
+
+	public void setCif(String cif) {
+		this.cif = cif;
+	}
+
+	public BigDecimal getCompleteTms() {
+		return this.completeTms;
+	}
+
+	public void setCompleteTms(BigDecimal completeTms) {
+		this.completeTms = completeTms;
+	}
+
+	public BigDecimal getCreTms() {
+		return this.creTms;
+	}
+
+	public void setCreTms(BigDecimal creTms) {
+		this.creTms = creTms;
+	}
+
+	public String getCreUser() {
+		return this.creUser;
+	}
+
+	public void setCreUser(String creUser) {
+		this.creUser = creUser;
+	}
+
+	public String getCustName() {
+		return this.custName;
+	}
+
+	public void setCustName(String custName) {
+		this.custName = custName;
+	}
+
+	public String getDescription() {
+		return this.description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public String getGroupId() {
+		return this.groupId;
+	}
+
+	public void setGroupId(String groupId) {
+		this.groupId = groupId;
+	}
+
+	public String getNote() {
+		return this.note;
+	}
+
+	public void setNote(String note) {
+		this.note = note;
+	}
+
+	public String getProcessingNo() {
+		return this.processingNo;
+	}
+
+	public void setProcessingNo(String processingNo) {
+		this.processingNo = processingNo;
+	}
+
+	public String getRemarks() {
+		return this.remarks;
+	}
+
+	public void setRemarks(String remarks) {
+		this.remarks = remarks;
+	}
+
+	public String getStat() {
+		return this.stat;
+	}
+
+	public void setStat(String stat) {
+		this.stat = stat;
+	}
+
+	public BigDecimal getUpdateStamp() {
+		return this.updateStamp;
+	}
+
+	public void setUpdateStamp(BigDecimal updateStamp) {
+		this.updateStamp = updateStamp;
+	}
+
+	public BigDecimal getUserLevel() {
+		return this.userLevel;
+	}
+
+	public void setUserLevel(BigDecimal userLevel) {
+		this.userLevel = userLevel;
+	}
+
+	public String getUsrId() {
+		return this.usrId;
+	}
+
+	public void setUsrId(String usrId) {
+		this.usrId = usrId;
+	}
+
+	public String getBrchName() {
+		return brchName;
+	}
+
+	public void setBrchName(String brchName) {
+		this.brchName = brchName;
+	}
+
+	public String getBrchCde() {
+		return brchCde;
+	}
+
+	public void setBrchCde(String brchCde) {
+		this.brchCde = brchCde;
+	}
+
+}

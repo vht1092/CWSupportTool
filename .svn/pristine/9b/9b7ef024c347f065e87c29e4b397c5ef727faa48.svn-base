@@ -1,0 +1,17 @@
+package cwst.com;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.SecurityAutoConfiguration;
+
+import com.ulisesbocchio.jasyptspringboot.annotation.EncryptablePropertySource;
+
+@SpringBootApplication(exclude = { SecurityAutoConfiguration.class })
+@EncryptablePropertySource(name = "EncryptedProperties", value = "classpath:encrypted.properties")
+public class CwSupportToolApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(CwSupportToolApplication.class, args);
+	}
+
+}

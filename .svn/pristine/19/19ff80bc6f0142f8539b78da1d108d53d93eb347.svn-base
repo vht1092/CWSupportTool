@@ -1,0 +1,15 @@
+package cwst.com.repositories;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+
+import cwst.com.entities.CwstSysView;
+
+@Repository
+public interface CwstSysViewRepo extends CrudRepository<CwstSysView, Long> {
+	@Query(value = "select a.id, a.viewname, a.viewdesc from ccps.cwst_sys_view a",nativeQuery=true)
+	List<CwstSysView> findAll();
+}

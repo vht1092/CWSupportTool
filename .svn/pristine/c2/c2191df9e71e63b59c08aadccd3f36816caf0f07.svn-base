@@ -1,0 +1,10 @@
+package cwst.com.services;
+
+import java.util.List;
+
+import cwst.com.entities.CwstSysView;
+
+public interface CwstSysViewService {
+	List<CwstSysView> findAll();
+
+}

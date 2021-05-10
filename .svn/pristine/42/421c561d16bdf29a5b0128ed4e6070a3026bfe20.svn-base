@@ -1,0 +1,12 @@
+package cwst.com.repositories;
+
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+
+import cwst.com.entities.CwstSentmail;
+import cwst.com.entities.CwstSentmailPK;
+
+@Repository
+public interface CwstSentmailRepo extends CrudRepository<CwstSentmail, CwstSentmailPK> {
+	Long countById(CwstSentmailPK id);
+}

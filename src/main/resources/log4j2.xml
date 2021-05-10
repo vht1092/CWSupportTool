@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+	<Properties>
+		<Property name="PID">????</Property>
+		<Property name="LOG_PATTERN">%clr{%d{yyyy-MM-dd
+			HH:mm:ss.SSS}}{faint}%clr{%5p}%clr{${sys:PID}}{magenta}%clr{---}{faint}%clr{[%15.15t]}{faint}%clr{%-40.40c{1.}}{cyan}
+			%clr{:}{faint}%m%n%xwEx</Property>
+		<Property name="path">log</Property>
+	</Properties>
+	<Appenders>
+		<Console name="Console-Appender" target="SYSTEM_OUT" follow="true">
+			<PatternLayout pattern="${LOG_PATTERN}" />
+		</Console>
+		<!-- 3. File Appender with file "${path}/springboot_log.log" -->
+		<RollingFile name="SpringBoot-Appender" fileName="${path}/springboot_log.log" filePattern="${path}/springboot_log-%d{-dd-MM-yyyy}.log">
+			<PatternLayout>
+				<pattern>[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n</pattern>
+			</PatternLayout>
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+			</Policies>
+		</RollingFile>
+		
+		<RollingFile name="App-Appender" fileName="${path}/app_log.log" filePattern="${path}/app_log-%d{-dd-MM-yyyy}.log">
+			<PatternLayout>
+				<pattern>[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n</pattern>
+			</PatternLayout>
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+			</Policies>
+		</RollingFile>
+		
+		<RollingFile name="Email-Appender" fileName="${path}/email_log.log" filePattern="${path}/email_log-%d{-dd-MM-yyyy}.log">
+			<PatternLayout>
+				<pattern>[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n</pattern>
+			</PatternLayout>
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+			</Policies>
+		</RollingFile>
+		
+	</Appenders>
+	<Loggers>
+		<Logger name="cwst.com" level="error" additivity="false">
+			<AppenderRef ref="App-Appender" />
+			<AppenderRef ref="Console-Appender" />
+		</Logger>
+		
+		<Logger name="cwst.com.components" level="error" additivity="false">
+			<AppenderRef ref="App-Appender" />
+		</Logger>
+		
+		<Logger name="cwst.com.CwSupportToolConfig" level="info" additivity="false">
+			<AppenderRef ref="Email-Appender" />			
+		</Logger>
+		
+		<Logger name="cwst.com.services" level="error" additivity="false">
+			<AppenderRef ref="App-Appender" />
+		</Logger>
+		
+		<Logger name="cwst.com.repositories" level="error" additivity="false">
+			<AppenderRef ref="App-Appender" />
+		</Logger>
+		
+		<Logger name="cwst.com.views" level="info" additivity="false">
+			<AppenderRef ref="App-Appender" />
+		</Logger>
+		
+		<Logger name="org.hibernate" level="error" additivity="false">
+			<AppenderRef ref="App-Appender" />
+		</Logger>
+		
+		<Root level="info">
+			<AppenderRef ref="SpringBoot-Appender" />
+			<AppenderRef ref="Console-Appender" />
+		</Root>
+	</Loggers>
+</Configuration>

@@ -1,0 +1,27 @@
+package cwst.com.repositories;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import cwst.com.entities.CwstCrdDetail;
+
+@Repository
+public interface CrdDetailRepo extends JpaRepository<CwstCrdDetail, Long> {
+
+	@Query(value = "select rownum, trim(fx_ir056_cif_no) as cif, trim(a.card_type), trim(fx_ir056_name) as hoten, trim(a.loai_the), trim(a.sothe_che), trim(fx_iw104_crd_cat) as category, f9_iw104_emb_dt as embossing_date, trim(a.brch_cde), a.loc, nvl(crddetail.trans_mk, 0), crddetail.trans_mk_date, nvl(crddetail.trans_mk_lock, 0), nvl(crddetail.rec_mk, 0), crddetail.rec_mk_date, nvl(crddetail.rec_mk_lock, 0), nvl(crddetail.trans_branch, 0), crddetail.trans_branch_date, nvl(crddetail.trans_branch_lock, 0), crddetail.trans_branch_emp_code, nvl(crddetail.trans_emp, 0), crddetail.trans_emp_date, crddetail.trans_emp_name, crddetail.trans_emp_code, nvl(crddetail.trans_emp_lock, 0), nvl(crddetail.trans_cust, 0), crddetail.trans_cust_date, nvl(crddetail.trans_cust_lock, 0), a.pan, a.brch_cde, crddetail.trans_branch_emp_name, crddetail.trans_branch_note, crddetail.fw_brn_cde, crddetail.id, nvl(crddetail.trans_mk_ischeck, 0), nvl(crddetail.rec_mk_ischeck, 0), nvl(crddetail.trans_branch_ischeck, 0), nvl(crddetail.trans_emp_ischeck, 0), nvl(crddetail.trans_cust_ischeck, 0) from (select substr(ccps.ded2(px_ir025_pan, ''), 1, 6) || 'xxxxxx' || substr(ccps.ded2(px_ir025_pan, ''), -4, 4) as sothe_che, px_ir025_pan pan, f9_ir025_crn crn, fx_ir025_crd_pgm card_type, fx_ir025_crd_brn crd_brn, fx_ir025_brch_cde as brch_cde, f9_ir025_loc_acct as loc, 'P' as loai_the from ir025@im where substr(fx_ir025_crd_pgm, 1, 2) in ('MC', 'MD', 'VS') union select substr(ccps.ded2(px_ir275_own_pan, ''), 1, 6) || 'xxxxxx' || substr(ccps.ded2(px_ir275_own_pan, ''), -4, 4) as sothe_che, px_ir275_own_pan pan, f9_ir275_crn crn, fx_ir275_crd_pgm card_type, fx_ir275_crd_brn crd_brn, fx_ir275_brch_cde brch_cde, f9_ir275_loc_acct as loc, 'S' as loai_the from ir275@im where substr(fx_ir275_crd_pgm, 1, 2) in ('MC', 'MD', 'VS')) a left join iw104@im on fx_iw104_pan = a.pan left join ir056@im on a.crn = p9_ir056_crn left join ccps.full_branch b on b.branch_code = a.brch_cde left join cwst_crd_detail crddetail on crddetail.cif_no = trim(fx_ir056_cif_no) and crddetail.crd_prin_supp = trim(a.loai_the) and crddetail.cust_name = trim(fx_ir056_name) and crddetail.pan = trim(a.pan) where f9_iw104_emb_dt between :ifromdate and :itodate and (trim(a.brch_cde) = trim(:ibrach_code) or :ibrach_code is null) and (trim(fx_ir056_cif_no) = trim(:icif) or :icif is null) and (trim(a.brch_cde) in (select trim(t.branch_code) from cwst_sys_usr_branch t where t.username = :username) or (crddetail.fw_brn_cde in ((select trim(t.branch_code) from cwst_sys_usr_branch t where t.username = :username)))) and (:icrd_type is null or trim(a.crd_brn) = upper(:icrd_type)) ", nativeQuery = true)
+	List<Object[]> findAll(@Param("ifromdate") final String fromdate, @Param("itodate") final String todate,
+			@Param("ibrach_code") final String branchcode, @Param("icrd_type") final String crdtypem, @Param("username") final String username,
+			@Param("icif") final String cif);
+
+	CwstCrdDetail findOneById(long id);
+
+	@Query(value = "select f from CwstCrdDetail f where f.cifNo=:cifno and f.custName=:custname and f.pan=:pan and f.crdType=:crdtype and f.crdPrinSupp=:crdprinsupp and f.issueType=:issuetype and f.issueDate=:issuedate")
+	CwstCrdDetail findOneByIdx(@Param("cifno") final String cifno, @Param("custname") final String custname, @Param("pan") final String pan,
+			@Param("crdtype") final String crdtype, @Param("crdprinsupp") final String prinsupp, @Param("issuetype") final String issuetype,
+			@Param("issuedate") final String issuedate);
+
+}

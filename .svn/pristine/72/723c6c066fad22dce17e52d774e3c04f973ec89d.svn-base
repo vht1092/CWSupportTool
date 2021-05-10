@@ -1,0 +1,296 @@
+package cwst.com.views;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.PostConstruct;
+
+import org.apache.tomcat.jdbc.pool.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+
+import com.ibm.icu.text.SimpleDateFormat;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.FileDownloader;
+import com.vaadin.server.FontAwesome;
+import com.vaadin.server.StreamResource;
+import com.vaadin.server.StreamResource.StreamSource;
+import com.vaadin.shared.ui.datefield.Resolution;
+import com.vaadin.spring.annotation.SpringView;
+import com.vaadin.ui.Button;
+import com.vaadin.ui.DateField;
+import com.vaadin.ui.FormLayout;
+import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Panel;
+import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
+import com.vaadin.ui.themes.ValoTheme;
+
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperExportManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
+import net.sf.jasperreports.engine.util.JRLoader;
+import net.sf.jasperreports.export.SimpleExporterInput;
+import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
+
+@SpringView(name = ReportCardDistributionView.VIEW_NAME)
+public class ReportCardDistributionView extends VerticalLayout implements View {
+
+	private static final long serialVersionUID = 1L;
+	public static final String VIEW_NAME = "bao-cao-phan-phoi-the";
+	private static final Logger LOGGER = LoggerFactory.getLogger(ReportCardDistributionView.class);
+
+	@Value("${dir.report}")
+	private String sDirReport;
+	@Autowired
+	protected DataSource localDataSource;
+	private final transient DateField dfFromdate = new DateField("Từ Ngày");
+	private final transient DateField dfTodate = new DateField("Đến Ngày");
+
+	@PostConstruct
+	void init() {
+
+		dfFromdate.setResolution(Resolution.DAY);
+		dfFromdate.setDateFormat("dd/MM/yyyy");
+		dfFromdate.setImmediate(true);
+
+		dfTodate.setResolution(Resolution.DAY);
+		dfTodate.setDateFormat("dd/MM/yyyy");
+		dfTodate.setImmediate(true);
+
+		setSizeFull();
+		setSpacing(true);
+		setMargin(true);
+
+		final Button btTranMK = new Button("1. Báo Cáo - Danh Sách Thẻ Đã Chuyển File Cty MKS");
+		btTranMK.setStyleName(ValoTheme.BUTTON_LINK);
+		btTranMK.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTranMK.addClickListener(evt -> {
+			showForm(btTranMK.getCaption(), "DSTheChuyenCTYMK.jasper");
+		});
+
+		final Button btNoTransMK = new Button("2. Báo Cáo - Danh Sách Thẻ  Chưa Chuyển File Cty MKS");
+		btNoTransMK.setStyleName(ValoTheme.BUTTON_LINK);
+		btNoTransMK.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btNoTransMK.addClickListener(evt -> {
+			showForm(btNoTransMK.getCaption(), "DSTheChuaCTYMK.jasper");
+		});
+		
+		final Button btRecMKS = new Button("3. Báo Cáo - Danh Sách Thẻ Đã Nhận Từ Cty MKS");
+		btRecMKS.setStyleName(ValoTheme.BUTTON_LINK);
+		btRecMKS.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btRecMKS.addClickListener(evt -> {
+			showForm(btRecMKS.getCaption(), "DSTheNhanCTYMK.jasper");
+		});
+
+		final Button btTransMKButNoRec = new Button("4.	Báo Cáo - Danh Sách Thẻ Trung Tâm Thẻ Chưa Nhận");
+		btTransMKButNoRec.setStyleName(ValoTheme.BUTTON_LINK);
+		btTransMKButNoRec.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTransMKButNoRec.addClickListener(evt -> {
+			showForm(btTransMKButNoRec.getCaption(), "DSTheChuyenCTYMKNhungChuaNhan.jasper");
+		});
+
+		final Button btRecMKButNoTransBranch = new Button("5. Báo Cáo - Danh Sách Thẻ Đã Nhận Từ Cty MKS Nhưng Đơn Vị Chưa Nhận");
+		btRecMKButNoTransBranch.setStyleName(ValoTheme.BUTTON_LINK);
+		btRecMKButNoTransBranch.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btRecMKButNoTransBranch.addClickListener(evt -> {
+			showForm(btRecMKButNoTransBranch.getCaption(), "DSDonViChuaNhanThe.jasper");
+		});
+
+		final Button btTransBranch = new Button("6. Báo Cáo - Danh Sách Thẻ Đơn Vị Đã Nhận Theo Ngày");
+		btTransBranch.setStyleName(ValoTheme.BUTTON_LINK);
+		btTransBranch.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTransBranch.addClickListener(evt -> {
+			showForm(btTransBranch.getCaption(), "DSTheDonViDaNhan.jasper");
+		});
+
+		final Button btTransBranchButNoTranEmp = new Button("7.	Báo Cáo - Danh Sách Thẻ Đơn Vị Đã Nhận Nhưng Chưa Giao Thẻ Cho NVKD");
+		btTransBranchButNoTranEmp.setStyleName(ValoTheme.BUTTON_LINK);
+		btTransBranchButNoTranEmp.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTransBranchButNoTranEmp.addClickListener(evt -> {
+			showForm(btTransBranchButNoTranEmp.getCaption(), "DSDVDaNhanNhungChuaGiaoNVKD.jasper");
+		});
+
+		final Button btTranEmp = new Button("8.	Báo Cáo - Danh Sách Thẻ Đã Giao Cho NVKD Theo Ngày");
+		btTranEmp.setStyleName(ValoTheme.BUTTON_LINK);
+		btTranEmp.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTranEmp.addClickListener(evt -> {
+			showForm(btTranEmp.getCaption(), "DSTheDaGiaoNVKD.jasper");
+		});
+
+		final Button btTranEmpButNoTranCust = new Button("9. Báo Cáo - Danh Sách Thẻ NVKD Đã Nhận Nhưng Chưa Giao Cho Khách Hàng");
+		btTranEmpButNoTranCust.setStyleName(ValoTheme.BUTTON_LINK);
+		btTranEmpButNoTranCust.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTranEmpButNoTranCust.addClickListener(evt -> {
+			showForm(btTranEmpButNoTranCust.getCaption(), "DSTheDaGiaoNVKDNhungChuaGiaoKH.jasper");
+		});
+
+		final Button btTranCust = new Button("10. Báo Cáo - Danh Sách Thẻ Đã Giao Cho KH");
+		btTranCust.setStyleName(ValoTheme.BUTTON_LINK);
+		btTranCust.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btTranCust.addClickListener(evt -> {
+			showForm(btTranCust.getCaption(), "DSTheDaGiaoKH.jasper");
+		});
+
+		final Button btNoTranCust = new Button("11.	Báo Cáo - Danh Sách Thẻ KH Không Nhận Thẻ, Đơn Vị Đóng Thẻ");
+		btNoTranCust.setStyleName(ValoTheme.BUTTON_LINK);
+		btNoTranCust.setIcon(FontAwesome.ANGLE_DOUBLE_LEFT);
+		btNoTranCust.addClickListener(evt -> {
+			showForm(btNoTranCust.getCaption(), "DSKHKhongNhanThe.jasper");
+		});
+
+		addComponent(btTranMK);
+		addComponent(btNoTransMK);
+		addComponent(btRecMKS);
+		addComponent(btTransMKButNoRec);				
+		addComponent(btRecMKButNoTransBranch);
+		addComponent(btTransBranch);
+		addComponent(btTransBranchButNoTranEmp);
+		addComponent(btTranEmp);
+		addComponent(btTranEmpButNoTranCust);
+		addComponent(btTranCust);
+		addComponent(btNoTranCust);
+
+	}
+
+	@Override
+	public void enter(ViewChangeEvent event) {
+
+	}
+
+	private void showForm(String type, String filename) {
+		// Dong tat ca window dang mo
+		getUI().getWindows().forEach(s -> {
+			getUI().removeWindow(s);
+		});
+
+		final Window window = new Window();
+		window.setModal(true);
+		window.center();
+		window.setWidth(450f, Unit.PIXELS);
+		window.setResizable(false);
+
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setSizeFull();
+		formLayout.setSpacing(true);
+		formLayout.setMargin(true);
+
+		final HorizontalLayout buttonLayout = new HorizontalLayout();
+		buttonLayout.setSpacing(true);
+
+		final Button btPDFDowload = new Button("PDF");
+		btPDFDowload.setStyleName(ValoTheme.BUTTON_BORDERLESS);
+		btPDFDowload.setIcon(FontAwesome.DOWNLOAD);
+
+		final Button btXLSXDowload = new Button("XLSX");
+		btXLSXDowload.setStyleName(ValoTheme.BUTTON_BORDERLESS);
+		btXLSXDowload.setIcon(FontAwesome.DOWNLOAD);
+
+		// Dowload file pdf
+		final StreamResource myResourcePDF = createTransMKResourcePDF(filename);
+		final FileDownloader fileDownloaderPDF = new FileDownloader(myResourcePDF);
+		fileDownloaderPDF.extend(btPDFDowload);
+
+		// Dowload file xls
+		final StreamResource myResourceXLSX = createTransMKResourceXLS(filename);
+		final FileDownloader fileDownloaderXLSX = new FileDownloader(myResourceXLSX);
+		fileDownloaderXLSX.extend(btXLSXDowload);
+
+		buttonLayout.addComponent(btPDFDowload);
+		buttonLayout.addComponent(btXLSXDowload);
+
+		formLayout.addComponent(dfFromdate);
+		formLayout.addComponent(dfTodate);
+		formLayout.addComponent(buttonLayout);
+
+		final Panel panel = new Panel();
+		panel.setCaption(type);
+
+		panel.setContent(formLayout);
+		window.setContent(panel);
+		getUI().addWindow(window);
+	}
+
+	@SuppressWarnings("serial")
+	private StreamResource createTransMKResourcePDF(final String filename) {
+		return new StreamResource(new StreamSource() {
+			@Override
+			public InputStream getStream() {
+
+				try {
+					final ByteArrayOutputStream outpuf = makeFileForDownLoad(filename, "PDF");
+					return new ByteArrayInputStream(outpuf.toByteArray());
+				} catch (JRException e) {
+					LOGGER.error(e.getMessage());
+				} catch (SQLException e) {
+					LOGGER.error(e.getMessage());
+				}
+				return null;
+
+			}
+		}, "qlqqt_baocao.pdf");
+	}
+
+	@SuppressWarnings("serial")
+	private StreamResource createTransMKResourceXLS(final String filename) {
+		return new StreamResource(new StreamSource() {
+			@Override
+			public InputStream getStream() {
+
+				try {
+					final ByteArrayOutputStream outpuf = makeFileForDownLoad(filename, "XLSX");
+					return new ByteArrayInputStream(outpuf.toByteArray());
+
+				} catch (JRException e) {
+					LOGGER.error(e.getMessage());
+				} catch (SQLException e) {
+					LOGGER.error(e.getMessage());
+				}
+				return null;
+
+			}
+		}, "qlqqt_baocao.xlsx");
+	}
+
+	private ByteArrayOutputStream makeFileForDownLoad(String filename, String extension) throws JRException, SQLException {
+
+		final Connection con = localDataSource.getConnection();
+		final ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+		// Tham so truyen vao cho bao cao
+		final Map<String, Object> parameters = new HashMap<String, Object>();
+		final SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd");
+		parameters.put("fromdate", Integer.parseInt(format.format(dfFromdate.getValue())));
+		parameters.put("todate", Integer.parseInt(format.format(dfTodate.getValue())));
+
+		// Dung file da compile
+		final JasperReport jasperReport = (JasperReport) JRLoader.loadObjectFromFile(sDirReport + "/" + filename);
+		// Load file XML va compile
+		// final JasperReport jasperReport = JasperCompileManager.compileReport(sDirReport + "/" + filename);
+		final JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, con);
+
+		// Xuat file Excel
+		if (extension.equals("XLSX")) {
+			final JRXlsxExporter xlsx = new JRXlsxExporter();
+			xlsx.setExporterInput(new SimpleExporterInput(jasperPrint));
+			xlsx.setExporterOutput(new SimpleOutputStreamExporterOutput(output));
+			xlsx.exportReport();
+		} else if (extension.equals("PDF")) { // File PDF
+			JasperExportManager.exportReportToPdfStream(jasperPrint, output);
+		}
+		return output;
+
+	}
+
+}

@@ -1,0 +1,34 @@
+app.code=CWST
+server.port=8080
+# LDAP ------------------------------------------------------------------------------------------------
+#ldap.host=192.168.47.130
+#ldap.domain=local.test 
+ldap.host=ad.scb.com.vn
+#ldap.host=192.168.43.41
+ldap.port=389
+ldap.domain=scb.local
+# Database
+spring.datasource.url:jdbc:oracle:thin:@192.168.49.15:3000:IM
+spring.datasource.username:ccps
+spring.datasource.password:ENC(LI64xm0lnqRLr90FIXXRCA==)
+spring.datasource.driver-class-name=oracle.jdbc.driver.OracleDriver
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.default_schema=ccps
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.Oracle10gDialect
+# Email (MailProperties)
+spring.mail.default-encoding=UTF-8
+spring.mail.host= mail.scb.com.vn
+spring.mail.protocol=smtp
+spring.mail.username=chautk
+spring.mail.password=ENC(D3+0FqSn2elb9i8AEwQtF9IW3P8rQQ0OFxf5ZqrFSLk=)
+spring.mail.properties.mail.debug= false
+spring.mail.properties.mail.smtp.auth= true
+spring.mail.properties.mail.smtp.starttls.enable= true
+spring.mail.properties.mail.smtp.socketFactory.port=25
+spring.mail.properties.mail.smtp.ssl.enable= true
+spring.mail.properties.mail.smtp.socketFactory.class=javax.net.ssl.SSLSocketFactory
+
+dir.report=D:/Software/CWST/reports
+
+logging.level.org.springframework.web: ERROR
+logging.level.org.hibernate: ERROR

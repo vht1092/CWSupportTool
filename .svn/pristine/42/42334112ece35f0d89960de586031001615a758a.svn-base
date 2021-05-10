@@ -1,0 +1,1550 @@
+package cwst.com.views;
+
+import com.vaadin.addon.contextmenu.ContextMenu;
+import com.vaadin.data.Item;
+import com.vaadin.data.Property.ReadOnlyException;
+import com.vaadin.data.Validator;
+import com.vaadin.data.Validator.InvalidValueException;
+import com.vaadin.data.fieldgroup.BeanFieldGroup;
+import com.vaadin.data.fieldgroup.FieldGroup.CommitEvent;
+import com.vaadin.data.fieldgroup.FieldGroup.CommitException;
+import com.vaadin.data.fieldgroup.FieldGroup.CommitHandler;
+import com.vaadin.data.util.GeneratedPropertyContainer;
+import com.vaadin.data.util.IndexedContainer;
+import com.vaadin.data.util.PropertyValueGenerator;
+import com.vaadin.data.util.converter.Converter.ConversionException;
+import com.vaadin.data.util.converter.StringToBooleanConverter;
+import com.vaadin.data.validator.StringLengthValidator;
+import com.vaadin.event.ItemClickEvent;
+import com.vaadin.event.ShortcutAction.KeyCode;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.FileResource;
+import com.vaadin.server.FontAwesome;
+import com.vaadin.server.ResourceReference;
+import com.vaadin.shared.ui.datefield.Resolution;
+import com.vaadin.spring.annotation.SpringView;
+import com.vaadin.ui.*;
+import com.vaadin.ui.AbstractSelect.ItemCaptionMode;
+import com.vaadin.ui.Grid.CellReference;
+import com.vaadin.ui.Grid.CellStyleGenerator;
+import com.vaadin.ui.Grid.HeaderRow;
+import com.vaadin.ui.Grid.SelectionMode;
+import com.vaadin.ui.Notification.Type;
+import com.vaadin.ui.renderers.HtmlRenderer;
+import com.vaadin.ui.themes.ValoTheme;
+import cwst.com.CwSupportToolUI;
+import cwst.com.SecurityUtils;
+import cwst.com.StringToDateFormat;
+import cwst.com.TimeConverter;
+import cwst.com.components.FileUploader;
+import cwst.com.entities.CwstCrdDetail;
+import cwst.com.services.CrdDetailService;
+import cwst.com.services.FullBranchService;
+import cwst.com.services.MessageByLocalService;
+import de.datenhahn.vaadin.componentrenderer.ComponentRenderer;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
+import org.vaadin.haijian.ExcelExporter;
+
+import javax.annotation.PostConstruct;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.Date;
+
+@SpringView(name = CardDistributionView.VIEW_NAME, ui = CwSupportToolUI.class)
+public class CardDistributionView extends VerticalLayout implements View {
+
+	// private static final Logger LOGGER = LoggerFactory.getLogger(CardWorkSupportToolView.class);
+	private static final Logger LOGGER = LogManager.getLogger(CardDistributionView.class);
+	private static final long serialVersionUID = 1L;
+	public static final String VIEW_NAME = "quan-ly-phan-phoi-the";
+
+	@Value("${dir.attach.file}")
+	private String dirFile;
+	@Autowired
+	private CrdDetailService crdDetService;
+	@Autowired
+	private FullBranchService fullBrchService;
+
+	private static final String TRANSFERED = "Đã chuyển", RECEIVED = "Đã nhận";
+	private final IndexedContainer idxContainer = new IndexedContainer();
+	private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+	private final TimeConverter timeConverter = new TimeConverter();
+	private DateField dfRecMkDate, dtTransMkDate, dfTransBranchDate, dfTransBranchRecDate, dfTransEmpDate, dfTransCustDate, dfFromDate, dfToDate;
+	private CheckBox chbTransMk, chbRecMk, chbTransBranch, chbTransBranchRec, chbTransEmp, chbTransCust;
+	private ComboBox cbxUnit, cbxCrdType;
+	private TextField txfTransBranchEmpCode, txfTransBranchEmpName, txfTransBranchFwBrch, txfTransEmpName, txfTransEmpCode, txfTransBranchNote,
+			txfCif, txfTranEmpNote;
+	private Grid grid;
+	private BeanFieldGroup<CwstCrdDetail> fieldGroup;
+	@Autowired
+	private MessageByLocalService messageResource;
+
+	@PostConstruct
+	void init() {
+		if (StringUtils.hasText(SecurityUtils.getUserName())) {
+			initUI();
+		}
+	}
+
+	@Override
+	public void enter(ViewChangeEvent event) {
+	}
+
+	private void initUI() {
+		setSizeFull();
+		setMargin(true);
+		setSpacing(true);
+		initGrid();
+		createContextMenu(grid);
+
+		final Button btSave = new Button(messageResource.getMessage("button.save"));
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.addClickListener(evt -> {
+			Notification.show(messageResource.getMessage("notification.save.data"), Type.HUMANIZED_MESSAGE);
+			cmdLockData_Button();
+		});
+		if (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") || SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			btSave.setVisible(true);
+		} else {
+			btSave.setVisible(false);
+		}
+
+		final ExcelExporter excelExporter = new ExcelExporter();
+		excelExporter.setCaption("XLS");
+		excelExporter.setIcon(FontAwesome.DOWNLOAD);
+		excelExporter.setStyleName(ValoTheme.BUTTON_FRIENDLY);
+		excelExporter.addClickListener(evt -> {
+			excelExporter.setTableToBeExported(initDataExport());
+		});
+
+		final HorizontalLayout buttonLayout = new HorizontalLayout();
+		buttonLayout.setSpacing(true);
+		buttonLayout.addComponent(btSave);
+		buttonLayout.addComponent(excelExporter);
+
+		// Tao cac truong tim kiem
+		FormLayout searchForm = initSearchField();
+
+		addComponent(searchForm);
+		addComponent(grid);
+		addComponent(buttonLayout);
+
+		setExpandRatio(searchForm, 0);
+		setExpandRatio(grid, 1);
+		setExpandRatio(buttonLayout, 2);
+	}
+
+	private void initGrid() {
+		// Thong tin chinh
+		idxContainer.addContainerProperty("stt", String.class, "");
+		idxContainer.addContainerProperty("id", String.class, "");
+		idxContainer.addContainerProperty("cif", String.class, "");
+		idxContainer.addContainerProperty("crd_brd", String.class, "");
+		idxContainer.addContainerProperty("cust_name", String.class, "");
+		idxContainer.addContainerProperty("main_sub", String.class, "");
+		idxContainer.addContainerProperty("pan_mask", String.class, "");
+		idxContainer.addContainerProperty("issue_type", String.class, "");
+		idxContainer.addContainerProperty("issue_date", String.class, "");
+		idxContainer.addContainerProperty("brch_code", String.class, "");
+		// Chuyen file den MKS
+		idxContainer.addContainerProperty("trans_mk", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_mk_date", String.class, "");
+		idxContainer.addContainerProperty("trans_mk_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_mk_check", Boolean.class, false);
+		// Nhan the tu cty MKS
+		idxContainer.addContainerProperty("rec_mk", Boolean.class, false);
+		idxContainer.addContainerProperty("rec_mk_date", String.class, "");
+		idxContainer.addContainerProperty("rec_mk_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("rec_mk_check", Boolean.class, false);
+		// Da giao the ve don vi
+		idxContainer.addContainerProperty("trans_branch", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_branch_date", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_emp_code", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_emp_name", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_fw", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_note", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_branch_check", Boolean.class, false);
+		// Don vi da nhan the
+		idxContainer.addContainerProperty("trans_branch_rec", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_branch_rec_date", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_rec_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_branch_rec_check", Boolean.class, false);
+		// Chuyen the cho nhan vien kinh doanh
+		idxContainer.addContainerProperty("trans_emp", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_emp_date", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_code", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_name", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_note", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_emp_check", Boolean.class, false);
+		// Giao the cho KH
+		idxContainer.addContainerProperty("trans_cust", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_cust_date", String.class, "");
+		// Tai file PIN
+		idxContainer.addContainerProperty("filePin", String.class, false);
+		idxContainer.addContainerProperty("buttonDowload", Component.class, false);
+
+		idxContainer.addContainerProperty("trans_cust_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_cust_check", Boolean.class, false);
+		idxContainer.addContainerProperty("pan", String.class, "");
+
+		// Tao button dowload tren grid
+		GeneratedPropertyContainer gpc = new GeneratedPropertyContainer(idxContainer);
+
+		gpc.addGeneratedProperty("buttonDowload", new PropertyValueGenerator<Component>() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Component getValue(Item item, Object itemId, Object propertyId) {
+
+				final HorizontalLayout hr = new HorizontalLayout();
+
+				final Button btUpload = new Button("");
+				final String sFileName = String.valueOf(idxContainer.getItem(itemId).getItemProperty("filePin").getValue());
+				final String sId = String.valueOf(idxContainer.getItem(itemId).getItemProperty("id").getValue());
+				final boolean sTranCust = (Boolean) idxContainer.getItem(itemId).getItemProperty("trans_cust").getValue();
+				final boolean sTranCustLock = (Boolean) idxContainer.getItem(itemId).getItemProperty("trans_cust_lock").getValue();
+				btUpload.setIcon(FontAwesome.UPLOAD);
+				btUpload.setStyleName(ValoTheme.BUTTON_LINK);
+				btUpload.setDescription("Đính kèm file");
+				btUpload.addClickListener(evt -> {
+					showUploadFile(sId);
+				});
+				final Button btDowload = new Button("");
+				btDowload.setIcon(FontAwesome.DOWNLOAD);
+				btDowload.setStyleName(ValoTheme.BUTTON_LINK);
+				btDowload.setDescription("Tải file");
+				btDowload.addClickListener(downloadEvent -> {
+					try {
+						downloadFile(sFileName);
+					} catch (Exception e) {
+						LOGGER.error("Khong the tai file: " + sFileName + " - Message: " + e.getMessage());
+					}
+				});
+
+				// Neu thuc hien giao the cho KH va chua khoa du lieu moi hien thi cho upload file
+
+				if ((sTranCust && !sTranCustLock)
+						|| (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER") && SecurityUtils.hasRole("ROLE_DONVI") && sTranCust)) {
+					hr.addComponent(btUpload);
+				}
+				if (idxContainer.getItem(itemId).getItemProperty("filePin").getValue() != "") {
+					hr.addComponent(btDowload);
+				}
+
+				return hr;
+			}
+
+			@Override
+			public Class<Component> getType() {
+				return Component.class;
+			}
+		});
+
+		grid = new Grid();
+		grid.setSizeFull();
+		grid.setContainerDataSource(gpc);
+		grid.setSelectionMode(SelectionMode.MULTI);
+		grid.getColumn("stt");
+		grid.getColumn("cif").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.cifno"));
+		grid.getColumn("cif").setWidth(80f);
+		grid.getColumn("crd_brd").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.cardbranch"));
+		grid.getColumn("crd_brd").setWidth(100f);
+		grid.getColumn("cust_name").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.custname"));
+		grid.getColumn("cust_name").setWidth(216f);
+		grid.getColumn("main_sub").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.submain"));
+		grid.getColumn("pan_mask").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.panmask"));
+		grid.getColumn("pan_mask").setWidth(155f);
+		grid.getColumn("issue_type").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.issuetype"));
+		grid.getColumn("issue_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.issuedate"));
+		grid.getColumn("brch_code").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.branch.code"));
+		grid.getColumn("issue_date").setConverter(new StringToDateFormat());
+		grid.getColumn("trans_mk").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.transfered"))
+				.setRenderer(new HtmlRenderer(), new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_mk_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		grid.getColumn("trans_mk_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_mk_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+		grid.getColumn("rec_mk").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.received")).setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("rec_mk_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		grid.getColumn("rec_mk_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("rec_mk_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+		// Chuyen the ve don vi
+		grid.getColumn("trans_branch").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.received"))
+				.setRenderer(new HtmlRenderer(), new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_branch_emp_code").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.emp.code"));
+		grid.getColumn("trans_branch_emp_code").setWidth(66f);
+		grid.getColumn("trans_branch_emp_name").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.emp.name"));
+		grid.getColumn("trans_branch_note").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.note"));
+		grid.getColumn("trans_branch_fw").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.fw.branch"));
+		grid.getColumn("trans_branch_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		grid.getColumn("trans_branch_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_branch_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+		// Don vi da nhan the
+		grid.getColumn("trans_branch_rec").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.received"))
+				.setRenderer(new HtmlRenderer(), new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_branch_rec_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		grid.getColumn("trans_branch_rec_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_branch_rec_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+		// Chuyen cho NVKD
+		grid.getColumn("trans_emp").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.transfered"))
+				.setRenderer(new HtmlRenderer(), new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+
+		grid.getColumn("trans_emp_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		grid.getColumn("trans_emp_name").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.emp.name"));
+		grid.getColumn("trans_emp_name").setWidth(216f);
+		grid.getColumn("trans_emp_note").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.note"));
+		grid.getColumn("trans_emp_code").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.emp.code"));
+		grid.getColumn("trans_emp_code").setWidth(66f);
+		grid.getColumn("trans_emp_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_emp_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+		// Giao the cho KH
+		grid.getColumn("trans_cust").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.delivered"))
+				.setRenderer(new HtmlRenderer(), new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+
+		grid.getColumn("trans_cust_date").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		grid.getColumn("trans_cust_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_cust_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+
+		grid.getColumn("buttonDowload").setHeaderCaption(messageResource.getMessage("carddistribution.grid.header.attach.file"))
+				.setRenderer(new ComponentRenderer());
+		grid.getColumn("filePin").setHidden(true);
+		grid.getColumn("pan").setHidden(true);
+		grid.getColumn("id").setHidden(true);
+		if (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") || SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT")
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN") || SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER")) {
+			grid.addItemClickListener(evt -> {
+				cmdShowEditForm_GridClickListener(evt);
+			});
+		}
+		grid.setCellStyleGenerator(new CellStyleGenerator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getStyle(CellReference cell) {
+				// @formatter:off
+				if (cell.getPropertyId().equals("trans_mk_check") 
+						|| cell.getPropertyId().equals("rec_mk_check")
+						|| cell.getPropertyId().equals("trans_branch_check")
+						|| cell.getPropertyId().equals("trans_branch_rec_check")
+						|| cell.getPropertyId().equals("trans_emp_check")
+						|| cell.getPropertyId().equals("trans_cust_check")	
+						|| cell.getPropertyId().equals("trans_mk") 
+						|| cell.getPropertyId().equals("rec_mk")
+						|| cell.getPropertyId().equals("trans_branch")
+						|| cell.getPropertyId().equals("trans_branch_rec")
+						|| cell.getPropertyId().equals("trans_emp")
+						|| cell.getPropertyId().equals("trans_cust")
+		       // @formatter:on
+				) {
+					if ((boolean) cell.getValue() == true) {
+						return "icon-format-check";
+					}
+				}
+				if (cell.getPropertyId().equals("trans_mk_lock") || cell.getPropertyId().equals("rec_mk_lock")
+						|| cell.getPropertyId().equals("trans_branch_lock") || cell.getPropertyId().equals("trans_branch_rec_lock")
+						|| cell.getPropertyId().equals("trans_emp_lock") || cell.getPropertyId().equals("trans_cust_lock")) {
+					if ((boolean) cell.getValue() == true) {
+						return "icon-format-lock";
+					}
+				}
+				return "";
+			}
+		});
+		HeaderRow extraHeader = grid.prependHeaderRow();
+
+		/* --<< TAO GROUP COLUMN TREN GRID --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		/* Chuyen file cty mks */
+		extraHeader.join("trans_mk", "trans_mk_date", "trans_mk_lock", "trans_mk_check")
+				.setText(messageResource.getMessage("carddistribution.grid.header.tran.mks"));
+		/* Nhan the tu cty mks */
+		extraHeader.join("rec_mk", "rec_mk_date", "rec_mk_lock", "rec_mk_check")
+				.setText(messageResource.getMessage("carddistribution.grid.header.rec.mks"));
+		/* Da giao the ve don vi */
+		extraHeader
+				.join("trans_branch", "trans_branch_emp_code", "trans_branch_emp_name", "trans_branch_date", "trans_branch_lock", "trans_branch_fw",
+						"trans_branch_note", "trans_branch_check")
+				.setText(messageResource.getMessage("carddistribution.grid.header.delivered.branch"));
+		/* Don vi da nhan the */
+		extraHeader.join("trans_branch_rec", "trans_branch_rec_date", "trans_branch_rec_lock", "trans_branch_rec_check")
+				.setText(messageResource.getMessage("carddistribution.grid.header.received.branch"));
+		/* Don vi giao the cho nhan vien */
+		extraHeader.join("trans_emp", "trans_emp_date", "trans_emp_name", "trans_emp_code", "trans_emp_note", "trans_emp_lock", "trans_emp_check")
+				.setText("Đơn Vị Giao Thẻ Nhân Viên");
+		/* Giao the cho khach hang */
+		extraHeader.join("trans_cust", "trans_cust_date", "filePin", "buttonDowload", "trans_cust_lock", "trans_cust_check")
+				.setText("Giao Thẻ Khách Hàng");
+		/* --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+	}
+
+	/**
+	 * Khoi tao searching form
+	 */
+	@SuppressWarnings("unchecked")
+	private FormLayout initSearchField() {
+		// Form
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setSpacing(true);
+		txfCif = new TextField("CIF");
+		txfCif.setMaxLength(7);
+
+		dfFromDate = new DateField("Từ ngày");
+		dfToDate = new DateField("Đến ngày");
+		cbxUnit = new ComboBox("Đơn Vị");
+		cbxUnit.addContainerProperty("description", String.class, "");
+		cbxUnit.setItemCaptionMode(ItemCaptionMode.PROPERTY);
+		cbxUnit.setItemCaptionPropertyId("description");
+		fullBrchService.findByUserName(SecurityUtils.getUserName()).forEach(s -> {
+			final Item item = cbxUnit.addItem(s.getBranchCode());
+			item.getItemProperty("description").setValue(s.getBranchName().trim() + " - " + s.getBranchCode());
+		});
+		// final ComboBox cbUnit = new ComboBox("Đơn vị");
+		cbxCrdType = new ComboBox("Loại thẻ");
+		cbxCrdType.addItems("all", "mc", "vc");
+		cbxCrdType.setItemCaption("all", "Tất cả");
+		cbxCrdType.setItemCaption("mc", "MasterCard");
+		cbxCrdType.setItemCaption("vc", "Visa Card");
+		cbxCrdType.setNullSelectionAllowed(false);
+		cbxCrdType.setNullSelectionItemId(1);
+
+		final Button btSearch = new Button("Tìm");
+		btSearch.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSearch.setIcon(FontAwesome.SEARCH);
+		btSearch.addClickListener(evt -> {
+			cmdSearch_buttonClick();
+		});
+
+		dfToDate.setDateFormat("dd/MM/yyyy");
+		dfFromDate.setDateFormat("dd/MM/yyyy");
+
+		formLayout.addComponent(dfFromDate);
+		formLayout.addComponent(dfToDate);
+		formLayout.addComponent(txfCif);
+		formLayout.addComponent(cbxUnit);
+		formLayout.addComponent(cbxCrdType);
+		formLayout.addComponent(btSearch);
+		return formLayout;
+	}
+
+	/**
+	 * Xu ly tao du lieu cho grid, thuc hien sau khi goi initGrid()
+	 */
+	@SuppressWarnings("unchecked")
+	private void initData() {
+		if (!idxContainer.getItemIds().isEmpty()) {
+			idxContainer.removeAllItems();
+		}
+		final String sFromDate = dfFromDate.getValue() != null ? dateFormat.format(dfFromDate.getValue()) : timeConverter.getCurrentTime("");
+		final String sToDate = dfToDate.getValue() != null ? dateFormat.format(dfToDate.getValue()) : timeConverter.getCurrentTime("");
+		final String sBrand = cbxUnit.getValue() != null ? cbxUnit.getValue().toString() : "";
+		final String sCrdType = cbxCrdType.getValue() != null ? cbxCrdType.getValue().toString() : "";
+		final String sCif = txfCif.getValue() != null ? txfCif.getValue().toString() : "";
+		crdDetService.findAll(sFromDate, sToDate, sBrand, sCrdType, SecurityUtils.getUserName(), sCif).forEach(s -> {
+			Object itemId = idxContainer.addItem();
+			Item item = idxContainer.getItem(itemId);
+			item.getItemProperty("stt").setValue(s[0] != null ? s[0].toString() : "");
+			item.getItemProperty("cif").setValue(s[1] != null ? s[1].toString() : "");
+			item.getItemProperty("crd_brd").setValue(s[2] != null ? s[2].toString() : "");
+			item.getItemProperty("cust_name").setValue(s[3] != null ? s[3].toString() : "");
+			item.getItemProperty("main_sub").setValue(s[4] != null ? s[4].toString() : "");
+			item.getItemProperty("pan_mask").setValue(s[5] != null ? s[5].toString() : "");
+			item.getItemProperty("issue_type").setValue(s[6] != null ? s[6].toString() : "");
+			item.getItemProperty("issue_date").setValue(s[7] != null ? s[7].toString() : "");
+			item.getItemProperty("brch_code").setValue(s[8] != null ? s[8].toString() : "");
+			// Chuyen file den MK
+			item.getItemProperty("trans_mk").setValue(s[10].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_mk_date").setValue(s[11] != null ? convertDateFormat(s[11].toString()) : "");
+			item.getItemProperty("trans_mk_lock").setValue(s[12].toString().equals("0") ? false : true);
+			item.getItemProperty("rec_mk").setValue(s[13].toString().equals("0") ? false : true);
+			item.getItemProperty("rec_mk_date").setValue(s[14] != null ? convertDateFormat(s[14].toString()) : "");
+			item.getItemProperty("rec_mk_lock").setValue(s[15].toString().equals("0") ? false : true);
+			// Chuyen the ve don vi
+			item.getItemProperty("trans_branch").setValue(s[16].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_date").setValue(s[17] != null ? convertDateFormat(s[17].toString()) : "");
+			item.getItemProperty("trans_branch_lock").setValue(s[18].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_emp_code").setValue(s[19] != null ? s[19].toString() : "");
+			item.getItemProperty("trans_emp").setValue(s[20].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_emp_date").setValue(s[21] != null ? convertDateFormat(s[21].toString()) : "");
+			item.getItemProperty("trans_emp_name").setValue(s[22] != null ? s[22].toString() : "");
+			item.getItemProperty("trans_emp_code").setValue(s[23] != null ? s[23].toString() : "");
+			item.getItemProperty("trans_emp_lock").setValue(s[24].toString().equals("0") ? false : true);
+			// Giao the cho KH
+			item.getItemProperty("trans_cust").setValue(s[25].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_cust_date").setValue(s[26] != null ? convertDateFormat(s[26].toString()) : "");
+			item.getItemProperty("trans_cust_lock").setValue(s[27].toString().equals("0") ? false : true);
+			item.getItemProperty("pan").setValue(s[28] != null ? s[28].toString() : "");
+			item.getItemProperty("trans_branch_emp_name").setValue(s[30] != null ? s[30].toString() : "");
+			item.getItemProperty("trans_branch_note").setValue(s[31] != null ? s[31].toString() : "");
+			item.getItemProperty("trans_branch_fw").setValue(s[32] != null ? s[32].toString() : "");
+			item.getItemProperty("id").setValue(s[33] != null ? s[33].toString() : "");
+			item.getItemProperty("trans_mk_check").setValue(s[34].toString().equals("0") ? false : true);
+			item.getItemProperty("rec_mk_check").setValue(s[35].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_check").setValue(s[36].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_emp_check").setValue(s[37].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_cust_check").setValue(s[38].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_emp_note").setValue(s[39] != null ? s[39].toString() : "");
+			item.getItemProperty("filePin").setValue(s[40] != null ? s[40].toString() : "");
+
+			item.getItemProperty("trans_branch_rec").setValue(s[41].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_rec_date").setValue(s[42] != null ? convertDateFormat(s[42].toString()) : "");
+			item.getItemProperty("trans_branch_rec_lock").setValue(s[43].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_rec_check").setValue(s[44].toString().equals("0") ? false : true);
+			// String attachFile = "Xem file";
+			// if (s[40] == null) {
+			// attachFile = "Đính kèm file";
+			// }
+			// item.getItemProperty("buttonDowload").setValue(attachFile);
+
+		});
+	}
+
+	private String convertDateFormat(String sTime) {
+		return timeConverter.convertStrToDateTime(sTime);
+	}
+
+	/**
+	 * Xu ly khi click searching button
+	 */
+	private void cmdSearch_buttonClick() {
+		initData();
+	}
+
+	/**
+	 * Khoi tao context menu tren grid
+	 */
+	private void createContextMenu(AbstractComponent parentComponent) {
+		ContextMenu contextMenu = new ContextMenu(parentComponent, true);
+
+		// ----- << Kiem soat >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER") && (SecurityUtils.hasRole("ROLE_HO") || SecurityUtils.hasRole("ROLE_DONVI")))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.checker"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdCheckData_ContextMenu();
+			});
+		}
+		// ----- << Chuyen file CTY MKS >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.grid.header.tran.mks"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("TOMK");
+			});
+		}
+		// ----- << Nhan the tu CTY MKS >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.grid.header.rec.mks"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("RECMK");
+			});
+		}
+		// ----- << Da giao the ve don vi >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.grid.header.delivered.branch"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdShowForm_MenuContext("TOBRANCH");
+			});
+		}
+
+		// ----- << Don vi da nhan the >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.grid.header.received.branch"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("BRANCHREC");
+			});
+		}
+
+		// ----- << Giao the cho nhan vien >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.grid.header.delivered.emp"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdShowForm_MenuContext("TOEMP");
+			});
+		}
+		// ----- << Giao the cho khach hang >> -----
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem(messageResource.getMessage("carddistribution.grid.header.delivered.cust"), FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("TOCUST");
+			});
+		}
+	}
+
+	/**
+	 * Xu ly khoa the hang loat
+	 */
+	private void cmdLockData_Button() {
+		final Collection<Object> selectedItem = grid.getSelectedRows();
+		selectedItem.forEach(s -> {
+			final String id = idxContainer.getItem(s).getItemProperty("id").getValue().toString();
+			final String sCifNo = idxContainer.getItem(s).getItemProperty("cif").getValue().toString();
+			final String sCustName = idxContainer.getItem(s).getItemProperty("cust_name").getValue().toString();
+			final String sCrdType = idxContainer.getItem(s).getItemProperty("crd_brd").getValue().toString();
+			if (!id.equals("")) {
+				final long lid = Long.parseLong(id);
+				crdDetService.lockData(lid);
+				LOGGER.info(SecurityUtils.getUserName() + " - khoa du lieu - cif:" + sCifNo + "|custname:" + sCustName + "|crdtype:" + sCrdType);
+			}
+		});
+		initData();
+		grid.deselectAll();
+
+	}
+
+	/**
+	 * Xu ly cap nhat du lieu tu context menu
+	 */
+	private void cmdUpdateData_ContextMenu(String sType) {
+		final Collection<Object> selectedItem = grid.getSelectedRows();
+		selectedItem.forEach(s -> {
+
+			final String sCifNo = String.valueOf(idxContainer.getItem(s).getItemProperty("cif").getValue());
+			final String sCustName = String.valueOf(idxContainer.getItem(s).getItemProperty("cust_name").getValue());
+			final String sCrdType = String.valueOf(idxContainer.getItem(s).getItemProperty("crd_brd").getValue());
+			final String sPrinSupp = String.valueOf(idxContainer.getItem(s).getItemProperty("main_sub").getValue());
+			final String sIssueType = String.valueOf(idxContainer.getItem(s).getItemProperty("issue_type").getValue());
+			final String sIssueDate = String.valueOf(idxContainer.getItem(s).getItemProperty("issue_date").getValue());
+			final String sPan = String.valueOf(idxContainer.getItem(s).getItemProperty("pan").getValue());
+			final String sBrchCde = String.valueOf(idxContainer.getItem(s).getItemProperty("brch_code").getValue());
+			crdDetService.saveDataFromFormContextMenu(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate, sType, sBrchCde, "", "",
+					"", "");
+			LOGGER.info(
+					SecurityUtils.getUserName() + " - thuc hien " + sType + " - cif:" + sCifNo + "|custname:" + sCustName + "|crdtype:" + sCrdType);
+		});
+		initData();
+		grid.deselectAll();
+	}
+
+	/**
+	 * Xu ly kiem soat
+	 */
+	private void cmdCheckData_ContextMenu() {
+		final Collection<Object> selectedItem = grid.getSelectedRows();
+		selectedItem.forEach(s -> {
+			final String id = idxContainer.getItem(s).getItemProperty("id").getValue().toString();
+			final String cif = idxContainer.getItem(s).getItemProperty("cif").getValue().toString();
+			if (!id.equals("")) {
+				final long lid = Long.parseLong(id);
+				crdDetService.checkData(lid);
+				LOGGER.info(SecurityUtils.getUserName() + " - kiem soat du lieu - cif:" + cif);
+			}
+
+		});
+
+		initData();
+		grid.deselectAll();
+	}
+
+	/**
+	 * Xu ly the hien form dieu chinh khi chon case tren grid
+	 */
+	private void cmdShowEditForm_GridClickListener(ItemClickEvent evt) {
+
+		final Date maxDate = new Date();
+		final String sCifNo = idxContainer.getItem(evt.getItemId()).getItemProperty("cif").getValue().toString();
+		final String sCustName = idxContainer.getItem(evt.getItemId()).getItemProperty("cust_name").getValue().toString();
+		final String sCrdType = idxContainer.getItem(evt.getItemId()).getItemProperty("crd_brd").getValue().toString();
+		final String sPrinSupp = idxContainer.getItem(evt.getItemId()).getItemProperty("main_sub").getValue().toString();
+		final String sIssueType = idxContainer.getItem(evt.getItemId()).getItemProperty("issue_type").getValue().toString();
+		final String sIssueDate = idxContainer.getItem(evt.getItemId()).getItemProperty("issue_date").getValue().toString();
+		final String sPan = idxContainer.getItem(evt.getItemId()).getItemProperty("pan").getValue().toString();
+		final String sPanMask = idxContainer.getItem(evt.getItemId()).getItemProperty("pan_mask").getValue().toString();
+		CwstCrdDetail gciCrdDetail = crdDetService.findOneByIdx(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate);
+
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setMargin(true);
+		fieldGroup = new BeanFieldGroup<CwstCrdDetail>(CwstCrdDetail.class);
+
+		fieldGroup.setBuffered(true);
+		/* Truong hop chua co du lieu trong database */
+		if (gciCrdDetail.getCifNo() == null) {
+			gciCrdDetail = new CwstCrdDetail();
+			gciCrdDetail.setCifNo(sCifNo);
+			gciCrdDetail.setCustName(sCustName);
+			gciCrdDetail.setCrdType(sCrdType);
+			gciCrdDetail.setCrdPrinSupp(sPrinSupp);
+			gciCrdDetail.setIssueType(sIssueType);
+			gciCrdDetail.setIssueDate(sIssueDate);
+			gciCrdDetail.setPan(sPan);
+		} else {
+			fieldGroup.setItemDataSource(gciCrdDetail);
+		}
+		fieldGroup.setItemDataSource(gciCrdDetail);
+		fieldGroup.addCommitHandler(commitHandler_EditForm());
+
+		// Field readonly
+		final TextField tfPanMask = new TextField(messageResource.getMessage("carddistribution.grid.header.panmask"));
+		tfPanMask.setValue(sPanMask);
+		tfPanMask.setReadOnly(true);
+		final Field<?> flCifNo = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.cifno"), "cifNo",
+				AbstractTextField.class);
+		flCifNo.setReadOnly(true);
+		final Field<?> flCustName = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.custname"), "custName",
+				AbstractTextField.class);
+		flCustName.setReadOnly(true);
+		final Field<?> flCrdType = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.cardbranch"), "crdType",
+				AbstractTextField.class);
+		flCrdType.setReadOnly(true);
+		final Field<?> flCrdPrinSupp = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.submain"), "crdPrinSupp",
+				AbstractTextField.class);
+		flCrdPrinSupp.setReadOnly(true);
+		final Field<?> flIssueDate = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.issuedate"), "issueDate",
+				AbstractTextField.class);
+		flIssueDate.setReadOnly(true);
+		final Field<?> flIssueType = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.issuetype"), "issueType",
+				AbstractTextField.class);
+		flIssueType.setReadOnly(true);
+		final Field<?> flPan = fieldGroup.buildAndBind("PAN", "pan", AbstractTextField.class);
+		flPan.setReadOnly(true);
+		flPan.setVisible(false);
+
+		/* --<< CHUYEN FILE CTY MK --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+
+		chbTransMk = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.tran.mks"), "transMk", CheckBox.class);
+		chbTransMk.setReadOnly(gciCrdDetail.getTransMkLock());
+		dtTransMkDate = new DateField(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		dtTransMkDate.setDateFormat("dd/MM/yyyy");
+		dtTransMkDate.setResolution(Resolution.DAY);
+		dtTransMkDate.setRangeStart(null);
+		dtTransMkDate.setRangeEnd(maxDate);
+
+		/* --<< NHAN THE TU CTY MK --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+
+		chbRecMk = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.rec.mks"), "recMk", CheckBox.class);
+		chbRecMk.setImmediate(true);
+		chbRecMk.setVisible(gciCrdDetail.getTransMkLock());// Phai khoa chuyen file cho CTY MK thi moi hien thi
+		chbRecMk.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransMk.getValue()) {
+						chbRecMk.setValue(false);
+						throw new InvalidValueException(messageResource.getMessage("carddistribution.warning.firstmks"));
+					}
+				}
+			}
+		});
+		chbRecMk.addValueChangeListener(flRecMkEvent -> {
+			if ((boolean) flRecMkEvent.getProperty().getValue()) {
+				dfRecMkDate.setVisible(true);
+			} else {
+				dfRecMkDate.setVisible(false);
+			}
+		});
+		// Init date field TransRecMkDate
+		dfRecMkDate = new DateField(messageResource.getMessage("carddistribution.grid.header.complete.date"));
+		dfRecMkDate.setDateFormat("dd/MM/yyyy");
+		dfRecMkDate.setResolution(Resolution.DAY);
+		dfRecMkDate.setVisible(chbRecMk.getValue());
+		dfRecMkDate.setImmediate(true);
+		dfRecMkDate.setRangeStart(null);
+		dfRecMkDate.setRangeEnd(maxDate);
+		dfRecMkDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (dtTransMkDate.getValue() != null) {
+					if (date.before(dtTransMkDate.getValue())) {
+						throw new InvalidValueException(messageResource.getMessage("carddistribution.warning.date.before.mks"));
+					}
+				}
+			}
+		});
+
+		/* --<< DA GIAO THE VE DON VI --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		chbTransBranch = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.delivered.branch"), "transBranch",
+				CheckBox.class);
+		chbTransBranch.setVisible(gciCrdDetail.getRecMkLock()); // Neu chua khoa du lieu da nhan the tu CTY MK se an checkbox flTransBranch
+
+		// Them validate khi chon chuyen the ve don vi
+		chbTransBranch.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbRecMk.getValue()) {
+						chbTransBranch.setValue(false);
+						throw new InvalidValueException(messageResource.getMessage("carddistribution.warning.not.rec.fro.mks"));
+					}
+				}
+			}
+		});
+		// Them su kien neu khong check se an (hide) het cac truong lien quan
+		chbTransBranch.addValueChangeListener(flTransBranchEvent -> {
+			if ((boolean) flTransBranchEvent.getProperty().getValue()) {
+				dfTransBranchDate.setVisible(true);
+				txfTransBranchEmpCode.setVisible(true);
+				txfTransBranchEmpName.setVisible(true);
+				txfTransBranchFwBrch.setVisible(true);
+				txfTransBranchNote.setVisible(true);
+			} else {
+				dfTransBranchDate.setVisible(false);
+				txfTransBranchEmpCode.setVisible(false);
+				txfTransBranchEmpName.setVisible(false);
+			}
+		});
+		// Ma so nhan vien
+		txfTransBranchEmpCode = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.emp.code"), "transBranchEmpCode",
+				TextField.class);
+		txfTransBranchEmpCode.setVisible(chbTransBranch.getValue());
+		txfTransBranchEmpCode.setNullRepresentation("");
+		txfTransBranchEmpCode.setNullSettingAllowed(true);
+		// Ho ten nhan vien
+		txfTransBranchEmpName = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.emp.name"), "transBranchEmpName",
+				TextField.class);
+		txfTransBranchEmpName.setVisible(chbTransBranch.getValue());
+		txfTransBranchEmpName.setNullRepresentation("");
+		txfTransBranchEmpName.setNullSettingAllowed(true);
+		txfTransBranchEmpName.setValidationVisible(false);
+		txfTransBranchEmpName.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if (value == null) {
+					throw new InvalidValueException(
+							messageResource.getMessage("carddistribution.warning.input.emp.name"));/* Bat buoc nhap ma nhan vien */
+				}
+			}
+		});
+		// Chuyen tiep don vi
+		txfTransBranchFwBrch = fieldGroup.buildAndBind(messageResource.getMessage("carddistribution.grid.header.fw.branch"), "fwBrnCde",
+				TextField.class);
+		txfTransBranchFwBrch.setVisible(chbTransBranch.getValue());
+		txfTransBranchFwBrch.setNullRepresentation("");
+		txfTransBranchFwBrch.setNullSettingAllowed(true);
+		txfTransBranchFwBrch.setValidationVisible(false);
+		// Ghi chu chuyen tiep don vi
+		txfTransBranchNote = fieldGroup.buildAndBind("Ghi Chú", "transBranchNote", TextField.class);
+		txfTransBranchNote.setVisible(chbTransBranch.getValue());
+		txfTransBranchNote.setNullRepresentation("");
+		txfTransBranchNote.setNullSettingAllowed(true);
+		txfTransBranchNote.setValidationVisible(false);
+		txfTransBranchNote.setMaxLength(51);
+		txfTransBranchNote.addValidator(new StringLengthValidator("Tối đa 50 ký tự", 0, 50, true));
+		// Khoi tao truong TransBranchDate
+		dfTransBranchDate = new DateField("Ngày hoàn thành");
+		dfTransBranchDate.setDateFormat("dd/MM/yyyy");
+		dfTransBranchDate.setResolution(Resolution.DAY);
+		dfTransBranchDate.setRangeEnd(maxDate);
+		dfTransBranchDate.setVisible(chbTransBranch.getValue());
+		dfTransBranchDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (dfRecMkDate.getValue() != null) {
+					if (date.before(dfRecMkDate.getValue())) {
+						throw new InvalidValueException("Ngày chuyển thẻ về đơn vị không được trước ngày nhận thẻ từ CTY MK");
+					}
+				}
+			}
+		});
+
+		/* --<< DON VI DA NHAN THE --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		chbTransBranchRec = fieldGroup.buildAndBind("Đơn Vị Đã Nhận Thẻ", "transBranchRec", CheckBox.class);
+		chbTransBranchRec.setImmediate(true);
+		chbTransBranchRec.setVisible(gciCrdDetail.getTransBranchLock());
+
+		// Them validate khi chua chon chuyen the ve don vi
+		chbTransBranchRec.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransBranch.getValue()) {
+						chbTransBranchRec.setValue(false);
+						throw new InvalidValueException("Chưa giao thẻ về cho đơn vị");
+					}
+				}
+			}
+		});
+		chbTransBranchRec.addValueChangeListener(chbTransBranchRecEvent -> {
+			if ((boolean) chbTransBranchRecEvent.getProperty().getValue()) {
+				dfTransBranchRecDate.setVisible(true);
+			} else {
+				dfTransBranchRecDate.setVisible(false);
+			}
+		});
+		dfTransBranchRecDate = new DateField("Ngày nhận");
+		dfTransBranchRecDate.setVisible(chbTransBranchRec.getValue());
+		dfTransBranchRecDate.setDateFormat("dd/MM/yyyy");
+		dfTransBranchRecDate.setResolution(Resolution.DAY);
+		dfTransBranchRecDate.setRangeEnd(maxDate);
+		dfTransBranchRecDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (dfTransBranchDate.getValue() != null) {
+					if (date.before(dfTransBranchDate.getValue())) {
+						throw new InvalidValueException("Ngày đơn vị nhận thẻ không được trước ngày đã giao thẻ cho đơn vị");
+					}
+				}
+			}
+		});
+		/* --<< GIAO THE CHO NHAN VIEN --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		txfTransEmpCode = fieldGroup.buildAndBind("Mã Nhân Viên", "transEmpCode", TextField.class);
+		txfTransEmpName = fieldGroup.buildAndBind("Họ tên nhân viên", "transEmpName", TextField.class);
+
+		chbTransEmp = fieldGroup.buildAndBind("Đơn vị giao thẻ cho nhân viên", "transEmp", CheckBox.class);
+		chbTransEmp.setVisible(gciCrdDetail.getTransBranchRecLock());
+		chbTransEmp.addValueChangeListener(flTransEmpEvent -> {
+			final boolean ischeck = (boolean) chbTransEmp.getValue();
+			txfTransEmpCode.setVisible(ischeck);
+			txfTransEmpName.setVisible(ischeck);
+			dfTransEmpDate.setVisible(ischeck);
+			txfTranEmpNote.setVisible(ischeck);
+		});
+		chbTransEmp.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransBranch.getValue()) {
+						chbTransEmp.setValue(false);
+						throw new InvalidValueException("Chưa chuyển thẻ về đơn vị");
+					}
+				}
+			}
+		});
+
+		txfTransEmpCode.setValidationVisible(false);
+		txfTransEmpCode.setNullRepresentation("");
+		txfTransEmpCode.setNullSettingAllowed(true);
+		txfTransEmpCode.setVisible(chbTransEmp.getValue());
+		txfTransEmpName.setNullRepresentation("");
+		txfTransEmpName.setNullSettingAllowed(true);
+		txfTransEmpName.setValidationVisible(false);
+		txfTransEmpName.setVisible(chbTransEmp.getValue());
+		txfTransEmpName.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if (value == null) {
+					throw new InvalidValueException("Nhập họ tên nhân viên");
+				}
+			}
+		});
+		dfTransEmpDate = new DateField("Ngày hoàn thành");
+		dfTransEmpDate.setDateFormat("dd/MM/yyyy");
+		dfTransEmpDate.setVisible(chbTransEmp.getValue());
+		dfTransEmpDate.setResolution(Resolution.DAY);
+		dfTransEmpDate.setRangeEnd(maxDate);
+		dfTransEmpDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (date.before(dfTransBranchRecDate.getValue())) {
+					throw new InvalidValueException("Ngày chuyển nhân viên không được trước ngày đơn vị đã nhận thẻ");
+				}
+			}
+		});
+
+		// Ghi chu giao the cho nhan vien
+		txfTranEmpNote = fieldGroup.buildAndBind("Ghi chú", "transEmpNote", TextField.class);
+		txfTranEmpNote.setVisible(chbTransEmp.getValue());
+
+		/* -- << GIAO THE CHO KHACH HANG --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		chbTransCust = fieldGroup.buildAndBind("Giao thẻ khách hàng", "transCust", CheckBox.class);
+		chbTransCust.setVisible(gciCrdDetail.getTransEmpLock());
+		chbTransCust.addValueChangeListener(flTransCustEvent -> {
+			dfTransCustDate.setVisible((boolean) flTransCustEvent.getProperty().getValue());
+		});
+		chbTransCust.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransEmp.getValue()) {
+						chbTransCust.setValue(false);
+						throw new InvalidValueException("Chưa chuyển thẻ cho nhân viên");
+					}
+				}
+			}
+		});
+		// Khoi tao date field TransEmpDate
+		dfTransCustDate = new DateField("Ngày hoàn thành");
+		dfTransCustDate.setDateFormat("dd/MM/yyyy");
+		dfTransCustDate.setResolution(Resolution.DAY);
+		dfTransCustDate.setRangeEnd(maxDate);
+		dfTransCustDate.setVisible(chbTransCust.getValue());
+		dfTransCustDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (date.before(dfTransEmpDate.getValue())) {
+					throw new InvalidValueException("Ngày giao thẻ cho khách hàng không được trước ngày giao thẻ cho nhân viên");
+				}
+			}
+		});
+		/*--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+
+		/* Xu ly load du lieu ngay hoan thanh tu database neu khong co du lieu se hien thi mac dinh ngay hien tai */
+		try {
+			if (gciCrdDetail.getTransMkDate() == null) {
+				dtTransMkDate.setValue(new Date());
+			} else {
+				dtTransMkDate.setValue(dateFormat.parse(gciCrdDetail.getTransMkDate()));
+			}
+			if (gciCrdDetail.getRecMkDate() == null) {
+				dfRecMkDate.setValue(new Date());
+			} else {
+				dfRecMkDate.setValue(dateFormat.parse(gciCrdDetail.getRecMkDate()));
+			}
+			if (gciCrdDetail.getTransBranchDate() == null) {
+				dfTransBranchDate.setValue(new Date());
+			} else {
+				dfTransBranchDate.setValue(dateFormat.parse(gciCrdDetail.getTransBranchDate()));
+			}
+			if (gciCrdDetail.getTransBranchRecDate() == null) {
+				dfTransBranchRecDate.setValue(new Date());
+			} else {
+				dfTransBranchRecDate.setValue(dateFormat.parse(gciCrdDetail.getTransBranchRecDate()));
+			}
+			if (gciCrdDetail.getTransEmpDate() == null) {
+				dfTransEmpDate.setValue(new Date());
+			} else {
+				dfTransEmpDate.setValue(dateFormat.parse(gciCrdDetail.getTransEmpDate()));
+			}
+			if (gciCrdDetail.getTransCustDate() == null) {
+				dfTransCustDate.setValue(new Date());
+			} else {
+				dfTransCustDate.setValue(dateFormat.parse(gciCrdDetail.getTransCustDate()));
+			}
+		} catch (ReadOnlyException | ConversionException | ParseException e1) {
+			LOGGER.error("Load du lieu tu database den datefield - Message: " + e1.getMessage());
+		}
+		/*--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+
+		// Khong cho dieu chinh giao the cho CT MKneu da bi khoa
+		final boolean isTransMk = gciCrdDetail.getTransMkLock();
+		chbTransMk.setReadOnly(isTransMk);
+		dtTransMkDate.setReadOnly(isTransMk);
+		// Khong cho dieu chinh nhan the tu MK neu da bi khoa
+		final boolean isRecMk = gciCrdDetail.getRecMkLock();
+		chbRecMk.setReadOnly(isRecMk);
+		dfRecMkDate.setReadOnly(isRecMk);
+		// Khong cho dieu chinh giao the cho don vi neu da bi khoa
+		final boolean isTransBranch = gciCrdDetail.getTransBranchLock();
+		chbTransBranch.setReadOnly(isTransBranch);
+		dfTransBranchDate.setReadOnly(isTransBranch);
+		txfTransBranchEmpCode.setReadOnly(isTransBranch);
+		txfTransBranchEmpName.setReadOnly(isTransBranch);
+		txfTransBranchFwBrch.setReadOnly(isTransBranch);
+		txfTransBranchNote.setReadOnly(isTransBranch);
+		// Khong cho dieu chinh don vi nhan the khi da bi khoa
+		final boolean isTransBranchRec = gciCrdDetail.getTransBranchRecLock();
+		chbTransBranchRec.setReadOnly(isTransBranchRec);
+		dfTransBranchRecDate.setReadOnly(isTransBranchRec);
+		// Khong cho dieu chinh giao the cho nhan vien neu da bi khoa
+		final boolean isTransEmp = gciCrdDetail.getTransEmpLock();
+		chbTransEmp.setReadOnly(isTransEmp);
+		dfTransEmpDate.setReadOnly(isTransEmp);
+		txfTransEmpCode.setReadOnly(isTransEmp);
+		txfTransEmpName.setReadOnly(isTransEmp);
+		txfTranEmpNote.setReadOnly(isTransEmp);
+		// Khong cho dieu chinh giao the cho KH neu da bi khoa
+		chbTransCust.setReadOnly(gciCrdDetail.getTransCustLock());
+		dfTransCustDate.setReadOnly(gciCrdDetail.getTransCustLock());
+		// Khoi tao nut save
+		final Button btSave = new Button("Cập nhật");
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.setClickShortcut(KeyCode.ENTER);
+		btSave.addClickListener(btSaveEvt -> {
+			cmdButtonSave();
+		});
+		btSave.setVisible(false);
+
+		/* --<< XU LY NUT SAVE --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		if (!gciCrdDetail.getRecMkLock() || !gciCrdDetail.getRecMkLock() || !gciCrdDetail.getTransBranchLock() || !gciCrdDetail.getTransEmpLock()
+				|| !gciCrdDetail.getTransCustLock() || SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER")) {
+			btSave.setVisible(true);
+		}
+		/* --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+
+		/* --<< XU LY THEM COMPONENT VAO FORM --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+		formLayout.addComponent(flCifNo);
+		formLayout.addComponent(flCustName);
+		formLayout.addComponent(tfPanMask);
+		formLayout.addComponent(flCrdType);
+		formLayout.addComponent(flCrdPrinSupp);
+		formLayout.addComponent(flIssueDate);
+		formLayout.addComponent(flIssueType);
+
+		// Xu ly phan quyen theo role ho, donvi, checker
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransMk);
+			formLayout.addComponent(dtTransMkDate);
+			formLayout.addComponent(chbRecMk);
+			formLayout.addComponent(dfRecMkDate);
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransBranch);
+			formLayout.addComponent(dfTransBranchDate);
+			formLayout.addComponent(txfTransBranchEmpCode);
+			formLayout.addComponent(txfTransBranchEmpName);
+			formLayout.addComponent(txfTransBranchFwBrch);
+			formLayout.addComponent(txfTransBranchNote);
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransBranchRec);
+			formLayout.addComponent(dfTransBranchRecDate);
+		}
+
+		if ((SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_CHECKER") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransEmp);
+			formLayout.addComponent(dfTransEmpDate);
+			formLayout.addComponent(txfTransEmpCode);
+			formLayout.addComponent(txfTransEmpName);
+			formLayout.addComponent(txfTranEmpNote);
+
+			formLayout.addComponent(chbTransCust);
+			formLayout.addComponent(dfTransCustDate);
+		}
+		formLayout.addComponent(btSave);
+		/* --->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->>--->> */
+
+		// Khoi tao cua so, hien thi form dieu chinh
+		final Window window = new Window("Điều Chỉnh Thông Tin");
+		window.center();
+		window.setModal(true);
+		window.setContent(formLayout);
+		window.setWidth(40f, Unit.PERCENTAGE);
+		window.setHeight(90f, Unit.PERCENTAGE);
+		window.addCloseListener(closeEvent -> {
+			getUI().removeWindow(window);
+		});
+		getUI().getWindows().forEach(s -> {
+			getUI().removeWindow(s);
+		});
+		getUI().addWindow(window);
+	}
+
+	/**
+	 * Xu ly the hien form dien thong tin khi goi tu context menu
+	 */
+	private void cmdShowForm_MenuContext(String type) {
+		final Window window = new Window();
+		window.setWidth(28f, Unit.PERCENTAGE);
+		window.center();
+		window.setModal(true);
+
+		window.addCloseListener(evt -> {
+			getUI().removeWindow(window);
+		});
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setSpacing(true);
+		formLayout.setMargin(true);
+		final TextField tfEmpCode = new TextField("Mã Nhân Viên");
+		tfEmpCode.setMaxLength(5);
+
+		final TextField tfEmpName = new TextField("Họ Tên Nhân Viên");
+		tfEmpName.setMaxLength(50);
+		tfEmpName.setNullRepresentation("");
+		tfEmpName.addValidator(new StringLengthValidator("Nhập Tên Nhân Viên", 1, 50, false));
+		tfEmpName.setValidationVisible(false);
+
+		// Text file ghi chu
+		final TextField tfNote = new TextField("Ghi Chú");
+		tfNote.setMaxLength(50);
+		tfNote.setNullRepresentation("Nhập nội dung ghi chú");
+
+		final TextField tfFwBrch = new TextField("Chuyển Tiếp Đơn Vị");
+		tfFwBrch.setMaxLength(50);
+		tfFwBrch.setNullRepresentation("");
+		tfFwBrch.setMaxLength(3);
+		tfFwBrch.addValidator(new StringLengthValidator("Mã đơn vị tối đa ba ký tự", 0, 3, true));
+
+		final Button btSave = new Button("Đồng ý");
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.setClickShortcut(KeyCode.ENTER);
+		btSave.addClickListener(evt -> {
+			try {
+
+				tfEmpName.validate();
+				/* Truong hop them du lieu cho chuyen the ve don vi moi kiem tra chuyen tiep don vi */
+				if (type.equals("TOBRANCH")) {
+					tfFwBrch.validate();
+				}
+				final Collection<Object> selectedItem = grid.getSelectedRows();
+				idxContainer.getItemIds();
+				selectedItem.forEach(s -> {
+					final String sCifNo = String.valueOf(idxContainer.getItem(s).getItemProperty("cif").getValue());
+					final String sCustName = String.valueOf(idxContainer.getItem(s).getItemProperty("cust_name").getValue());
+					final String sCrdType = String.valueOf(idxContainer.getItem(s).getItemProperty("crd_brd").getValue());
+					final String sPrinSupp = String.valueOf(idxContainer.getItem(s).getItemProperty("main_sub").getValue());
+					final String sIssueType = String.valueOf(idxContainer.getItem(s).getItemProperty("issue_type").getValue());
+					final String sIssueDate = String.valueOf(idxContainer.getItem(s).getItemProperty("issue_date").getValue());
+					final String sPan = String.valueOf(idxContainer.getItem(s).getItemProperty("pan").getValue());
+					final String sBrchCde = String.valueOf(idxContainer.getItem(s).getItemProperty("brch_code").getValue());
+
+					crdDetService.saveDataFromFormContextMenu(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate, type, sBrchCde,
+							tfEmpCode.getValue().toString(), tfEmpName.getValue(), tfFwBrch.getValue(), tfNote.getValue());
+					LOGGER.info(SecurityUtils.getUserName() + " - thuc hien " + type + " - cif:" + sCifNo + "|custname:" + sCustName + "|crdtype:"
+							+ sCrdType + "|empcode:" + tfEmpCode.getValue() + "|empname:" + tfEmpName.getValue() + "|fwbranch:"
+							+ tfFwBrch.getValue());
+
+				});
+				initData();
+				grid.deselectAll();
+
+			} catch (InvalidValueException ex) {
+				tfEmpCode.setValidationVisible(true);
+				tfEmpName.setValidationVisible(true);
+
+			}
+		});
+		formLayout.addComponent(tfEmpCode);
+		formLayout.addComponent(tfEmpName);
+		if (type.equals("TOBRANCH")) {
+			formLayout.addComponent(tfFwBrch);
+		}
+		// Chi them textfield ghi chu cho giao doan chuyen the ve don vi, giao the cho nhan vien
+		if (type.equals("TOEMP") || type.equals("TOBRANCH")) {
+			formLayout.addComponent(tfNote);
+		}
+		formLayout.addComponent(btSave);
+
+		window.setContent(formLayout);
+		getUI().addWindow(window);
+	}
+
+	/**
+	 * Xu ly luu du lieu tu form
+	 */
+	private CommitHandler commitHandler_EditForm() {
+		return new CommitHandler() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void preCommit(CommitEvent commitEvent) throws CommitException {
+			}
+
+			@Override
+			public void postCommit(CommitEvent commitEvent) throws CommitException {
+				/* Lay du lieu tu form */
+				final boolean bolTransMk = (Boolean) commitEvent.getFieldBinder().getField("transMk").getValue();
+				final boolean bolRecMk = (Boolean) commitEvent.getFieldBinder().getField("recMk").getValue();
+				final boolean bolTransBranch = (Boolean) commitEvent.getFieldBinder().getField("transBranch").getValue();
+				final boolean bolTransBranchRec = (Boolean) commitEvent.getFieldBinder().getField("transBranchRec").getValue();
+				final boolean bolTransEmp = (Boolean) commitEvent.getFieldBinder().getField("transEmp").getValue();
+				final boolean bolTransCust = (Boolean) commitEvent.getFieldBinder().getField("transCust").getValue();
+
+				final String sCifNo = String.valueOf(commitEvent.getFieldBinder().getField("cifNo").getValue());
+				final String sCustName = String.valueOf(commitEvent.getFieldBinder().getField("custName").getValue());
+				final String sCrdType = String.valueOf(commitEvent.getFieldBinder().getField("crdType").getValue());
+				final String sPrinSupp = String.valueOf(commitEvent.getFieldBinder().getField("crdPrinSupp").getValue());
+				final String sIssueType = String.valueOf(commitEvent.getFieldBinder().getField("issueType").getValue());
+				final String sIssueDate = String.valueOf(commitEvent.getFieldBinder().getField("issueDate").getValue());
+				final String sPan = String.valueOf(commitEvent.getFieldBinder().getField("pan").getValue());
+				final String sTransBranchEmpCode = String.valueOf(commitEvent.getFieldBinder().getField("transBranchEmpCode").getValue());
+				final String sTransBranchEmpName = String.valueOf(commitEvent.getFieldBinder().getField("transBranchEmpName").getValue());
+				final String sTransBranchFwCde = String.valueOf(commitEvent.getFieldBinder().getField("fwBrnCde").getValue());
+				final String sTransBranchNote = String.valueOf(commitEvent.getFieldBinder().getField("transBranchNote").getValue());
+				final String sTransEmpCode = String.valueOf(commitEvent.getFieldBinder().getField("transEmpCode").getValue());
+				final String sTransEmpName = String.valueOf(commitEvent.getFieldBinder().getField("transEmpName").getValue());
+				final String sTransEmpNote = String.valueOf(commitEvent.getFieldBinder().getField("transEmpNote").getValue());
+				final String sTransMkDate = bolTransMk == false ? "" : dateFormat.format(dtTransMkDate.getValue());
+				final String sRecMkDate = bolRecMk == false ? "" : dateFormat.format(dfRecMkDate.getValue());
+				final String sTransBranchDate = bolTransBranch == false ? "" : dateFormat.format(dfTransBranchDate.getValue());
+				final String sTransBranchRecDate = bolTransBranchRec == false ? "" : dateFormat.format(dfTransBranchRecDate.getValue());
+				final String sTransEmpDate = bolTransEmp == false ? "" : dateFormat.format(dfTransEmpDate.getValue());
+				final String sTransCustDate = bolTransCust == false ? "" : dateFormat.format(dfTransCustDate.getValue());
+
+				/* Luu du lieu xuong database */
+				crdDetService.saveDataFromForm(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate, bolTransMk, sTransMkDate,
+						bolRecMk, sRecMkDate, bolTransBranch, sTransBranchDate, sTransBranchEmpCode, bolTransEmp, sTransEmpCode, sTransEmpName,
+						sTransEmpDate, bolTransCust, sTransCustDate, sTransBranchEmpName, sTransBranchFwCde, sTransBranchNote, bolTransBranchRec,
+						sTransBranchRecDate, sTransEmpNote);
+				/* Ghi log thao tac cua user */
+				LOGGER.info(SecurityUtils.getUserName() + " - Luu du lieu tu form - cif:" + sCifNo + " |custname: " + sCustName + "|crdtype: "
+						+ sCrdType + "|empname:" + sTransBranchEmpName + "|empcode:" + sTransBranchEmpCode + "|fwbranch:" + sTransBranchFwCde);
+				/* Lam moi grid */
+				getUI().access(new Runnable() {
+					@Override
+					public void run() {
+						idxContainer.removeAllItems();
+						initData();
+					}
+				});
+			}
+		};
+	}
+
+	// Tao du lieu xuat cho file Excel
+	@SuppressWarnings("unchecked")
+	private Table initDataExport() {
+		Table table = new Table();
+		table.addContainerProperty("STT", String.class, "");
+		table.addContainerProperty("CIF", String.class, "");
+		table.addContainerProperty("Loai_The", String.class, "");
+		table.addContainerProperty("Ten_Chu_The", String.class, "");
+		table.addContainerProperty("Chinh_Phu", String.class, "");
+		table.addContainerProperty("So_The", String.class, "");
+		table.addContainerProperty("Loai_Phat_Hanh", String.class, "");
+		table.addContainerProperty("Ngay_Phat_Hanh", String.class, "");
+		table.addContainerProperty("Ma_Don_Vi", String.class, "");
+		// Chuyen file den MK
+		// table.addContainerProperty("trans_mk", String.class, "");
+		table.addContainerProperty("Chuyen_File_Den_CTYMK", String.class, "");
+		table.addContainerProperty("Ngay_Chuyen_CTYMK", String.class, "");
+		// table.addContainerProperty("rec_mk", String.class, "");
+		table.addContainerProperty("Nhan_The_CTYMK", String.class, "");
+		table.addContainerProperty("Ngay_Nhan_CTYMK", String.class, "");
+		// Chuyen the ve don vi
+		// table.addContainerProperty("trans_branch", String.class, "");
+		table.addContainerProperty("Don_Vi_Nhan_The", String.class, "");
+		table.addContainerProperty("MSNV_Nhan", String.class, "");
+		table.addContainerProperty("Ngay_Don_Vi_Nhan", String.class, "");
+		// Giao the cho nhan vien
+		// table.addContainerProperty("trans_emp", String.class, "");
+		table.addContainerProperty("Giao_The_Cho_NV", String.class, "");
+		table.addContainerProperty("MSNV_Nhan", String.class, "");
+		table.addContainerProperty("Ho_Ten", String.class, "");
+		table.addContainerProperty("Ngay_Giao_The", String.class, "");
+		// Giao the cho KH
+		// table.addContainerProperty("trans_cust", String.class, "");
+		table.addContainerProperty("Giao_The_KH", String.class, "");
+		table.addContainerProperty("Ngay_Giao_The_KH", String.class, "");
+
+		idxContainer.getItemIds().forEach(s -> {
+			final Item itemid = table.getItem(table.addItem());
+			final String sstt = String.valueOf(idxContainer.getContainerProperty(s, "stt").getValue());
+			final String scif = String.valueOf(idxContainer.getContainerProperty(s, "cif").getValue());
+			final String scrd_brd = String.valueOf(idxContainer.getContainerProperty(s, "crd_brd").getValue());
+			final String scust_name = String.valueOf(idxContainer.getContainerProperty(s, "cust_name").getValue());
+			final String smain_sub = String.valueOf(idxContainer.getContainerProperty(s, "main_sub").getValue());
+			final String span_mask = String.valueOf(idxContainer.getContainerProperty(s, "pan_mask").getValue());
+			final String sissue_type = String.valueOf(idxContainer.getContainerProperty(s, "issue_type").getValue());
+			final String sissue_date = String.valueOf(idxContainer.getContainerProperty(s, "issue_date").getValue());
+			final String sbrch_code = String.valueOf(idxContainer.getContainerProperty(s, "brch_code").getValue());
+			final boolean btrans_mk_lock = (boolean) idxContainer.getContainerProperty(s, "trans_mk_lock").getValue();
+			final String strans_mk_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_mk_date").getValue());
+			final boolean brec_mk_lock = (boolean) idxContainer.getContainerProperty(s, "rec_mk_lock").getValue();
+			final String srec_mk_date = String.valueOf(idxContainer.getContainerProperty(s, "rec_mk_date").getValue());
+			final boolean btrans_branch_lock = (boolean) idxContainer.getContainerProperty(s, "trans_branch_lock").getValue();
+			final String strans_branch_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_branch_date").getValue());
+			final String strans_branch_emp_code = String.valueOf(idxContainer.getContainerProperty(s, "trans_branch_emp_code").getValue());
+			final boolean strans_emp_lock = (boolean) idxContainer.getContainerProperty(s, "trans_emp_lock").getValue();
+			final String strans_emp_code = String.valueOf(idxContainer.getContainerProperty(s, "trans_emp_code").getValue());
+			final String strans_emp_name = String.valueOf(idxContainer.getContainerProperty(s, "trans_emp_name").getValue());
+			final String strans_emp_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_emp_date").getValue());
+			final boolean btrans_cust_lock = (boolean) idxContainer.getContainerProperty(s, "trans_cust_lock").getValue();
+			final String strans_cust_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_cust_date").getValue());
+
+			itemid.getItemProperty("STT").setValue(sstt);
+			itemid.getItemProperty("CIF").setValue(scif);
+			itemid.getItemProperty("Loai_The").setValue(scrd_brd);
+			itemid.getItemProperty("Ten_Chu_The").setValue(scust_name);
+			itemid.getItemProperty("Chinh_Phu").setValue(smain_sub);
+			itemid.getItemProperty("So_The").setValue(span_mask);
+			itemid.getItemProperty("Loai_Phat_Hanh").setValue(sissue_type);
+			itemid.getItemProperty("Ngay_Phat_Hanh").setValue(timeConverter.convertStrToDateTime(sissue_date));
+			itemid.getItemProperty("Ma_Don_Vi").setValue(sbrch_code);
+			// Chuyen file den cong ty MK
+			if (btrans_mk_lock) {
+				itemid.getItemProperty("Chuyen_File_Den_CTYMK").setValue(TRANSFERED);
+				itemid.getItemProperty("Ngay_Chuyen_CTYMK").setValue(strans_mk_date);
+			} else {
+				itemid.getItemProperty("Chuyen_File_Den_CTYMK").setValue("");
+			}
+			// Nhan the tu cong ty MK
+			if (brec_mk_lock) {
+				itemid.getItemProperty("Nhan_The_CTYMK").setValue(RECEIVED);
+				itemid.getItemProperty("Ngay_Nhan_CTYMK").setValue(srec_mk_date);
+			} else {
+				itemid.getItemProperty("Nhan_The_CTYMK").setValue("");
+			}
+			// Don vi den nhan the
+			if (btrans_branch_lock) {
+				itemid.getItemProperty("Don_Vi_Nhan_The").setValue(RECEIVED);
+				itemid.getItemProperty("Ngay_Don_Vi_Nhan").setValue(strans_branch_date);
+				itemid.getItemProperty("MSNV_Nhan").setValue(strans_branch_emp_code);
+			} else {
+				itemid.getItemProperty("Don_Vi_Nhan_The").setValue("");
+			}
+			// Giao the cho nhan vien
+			if (strans_emp_lock) {
+				itemid.getItemProperty("Giao_The_Cho_NV").setValue(RECEIVED);
+				itemid.getItemProperty("MSNV_Nhan").setValue(strans_emp_code);
+				itemid.getItemProperty("Ho_Ten").setValue(strans_emp_name);
+				itemid.getItemProperty("Ngay_Giao_The").setValue(strans_emp_date);
+			} else {
+				itemid.getItemProperty("Giao_The_Cho_NV").setValue("");
+			}
+			// Giao the cho khach hang
+			if (btrans_cust_lock) {
+				itemid.getItemProperty("Giao_The_KH").setValue(RECEIVED);
+				itemid.getItemProperty("Ngay_Giao_The_KH").setValue(strans_cust_date);
+			} else {
+				itemid.getItemProperty("Giao_The_KH").setValue("");
+			}
+		});
+		return table;
+	}
+
+	private void cmdButtonSave() {
+		try {
+			// Kiem tra cac truong da thoa dieu kien chua
+			chbTransMk.validate();
+
+			// Co check nhan the tu CTY MK se kiem tra truong nhap ngay nhan the
+			if (chbRecMk.getValue()) {
+				dfRecMkDate.validate();
+			}
+			// Co check giao the cho don vi se kiem tra truong nhap ngay nhan the
+			if (chbTransBranch.getValue()) {
+				dfTransBranchDate.validate();
+				// txfTransBranchEmpCode.validate();
+				txfTransBranchEmpName.validate();
+				txfTransBranchNote.validate();
+			} else {
+				// txfTransBranchEmpCode.removeAllValidators();
+				txfTransBranchEmpName.removeAllValidators();
+				txfTransBranchNote.removeAllValidators();
+			}
+
+			if (chbTransEmp.getValue()) {
+				dfTransEmpDate.validate();
+				// txfTransEmpCode.validate();
+				txfTransEmpName.validate();
+			} else {
+				// txfTransEmpCode.removeAllValidators();
+				txfTransEmpName.removeAllValidators();
+			}
+
+			if (chbTransCust.getValue()) {
+				dfTransCustDate.validate();
+			} else {
+				dfTransCustDate.removeAllValidators();
+			}
+
+			// Tien hanh cap nhat du lieu
+			fieldGroup.commit();
+
+			Notification.show(messageResource.getMessage("notification.updated"), Type.HUMANIZED_MESSAGE);
+			// Dong cua so
+			getUI().getWindows().forEach(s -> {
+				getUI().removeWindow(s);
+			});
+			grid.deselectAll();
+		} catch (InvalidValueException e) {
+			txfTransBranchEmpCode.setValidationVisible(true);
+			txfTransBranchEmpName.setValidationVisible(true);
+			// txfTransEmpCode.setValidationVisible(true);
+			txfTransEmpName.setValidationVisible(true);
+
+		} catch (CommitException e) {
+			Notification.show(messageResource.getMessage("notification.update.fail"), Type.ERROR_MESSAGE);
+			LOGGER.error(e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	private void downloadFile(final String filename) throws FileNotFoundException {
+		File file = new File(dirFile + "/" + filename);
+		if (file.exists() && !file.isDirectory()) {
+			FileResource rs = new FileResource(file);
+			setResource("download", rs);
+			ResourceReference rr = ResourceReference.create(rs, this, "download");
+			getUI().getPage().open(rr.getURL(), "download");
+		} else {
+			throw new FileNotFoundException();
+		}
+	}
+
+	private void showUploadFile(final String id) {
+		getUI().getWindows().forEach(s -> {
+			getUI().removeWindow(s);
+		});
+		final FormLayout uploadInfoLayout = new FormLayout();
+
+		final Window window = new Window();
+		window.setContent(uploadInfoLayout);
+		window.setModal(true);
+		window.setWidth(50f, Unit.PERCENTAGE);
+
+		final FileUploader receiver = new FileUploader();
+		receiver.setFileStoreDir(dirFile);
+
+		final Upload upload = new Upload("Đính kèm file", receiver);
+		upload.setImmediate(false);
+		upload.setButtonCaption("Tải File Lên");
+
+		upload.addFinishedListener(evt -> {
+			CwstCrdDetail cwstCrdDetail = crdDetService.findOneById(Long.parseLong(id));
+			if (cwstCrdDetail.getFilePin() != null) {
+				final File file = new File(dirFile + "/" + cwstCrdDetail.getFilePin());
+				file.delete();
+			}
+			cwstCrdDetail.setFilePin(receiver.getFilename());
+			crdDetService.update(cwstCrdDetail);
+			LOGGER.error(SecurityUtils.getUserName() + "  - upload file: " + receiver.getFilename() + " - case id: " + id);
+			// Refresh grid
+			getUI().access(new Runnable() {
+				@Override
+				public void run() {
+					idxContainer.removeAllItems();
+					initData();
+					window.close();
+				}
+			});
+		});
+
+		uploadInfoLayout.addComponent(upload);
+		upload.addFailedListener(failEvent -> {
+			LOGGER.error("Khong the upload file: " + failEvent.getFilename());
+		});
+
+		getUI().addWindow(window);
+
+	}
+}

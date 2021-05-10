@@ -1,0 +1,206 @@
+// If you edit this file you need to compile the theme. See README.md for details.
+
+// Global variable overrides. Must be declared before importing Valo.
+
+// Defines the plaintext font size, weight and family. Font size affects general component sizing.
+//$v-font-size: 16px;
+//$v-font-weight: 300;
+//$v-font-family: "Open Sans", sans-serif;
+
+// Defines the border used by all components.
+//$v-border: 1px solid (v-shade 0.7);
+//$v-border-radius: 4px;
+
+// Affects the color of some component elements, e.g Button, Panel title, etc
+//$v-background-color: hsl(210, 0%, 98%);
+// Affects the color of content areas, e.g  Panel and Window content, TextField input etc
+//$v-app-background-color: $v-background-color;
+
+// Affects the visual appearance of all components
+//$v-gradient: v-linear 8%;
+//$v-bevel-depth: 30%;
+//$v-shadow-opacity: 5%;
+
+// Defines colors for indicating status (focus, success, failure)
+//$v-focus-color: valo-focus-color(); // Calculates a suitable color automatically
+//$v-friendly-color: #2c9720;
+//$v-error-indicator-color: #ed473b;
+
+// For more information, see: https://vaadin.com/book/-/page/themes.valo.html
+// Example variants can be copy/pasted from https://vaadin.com/wiki/-/wiki/Main/Valo+Examples
+
+$v-background-color: #fafafa;
+$v-app-background-color: #F1F1F1;
+$v-panel-background-color: #fff;
+$v-focus-color: #3b5998;
+$v-focus-style: 0 0 1px 1px rgba($v-focus-color, .5);
+$v-border-radius: 3px;
+$v-textfield-border-radius: 0;
+$v-font-family: Arial, Helvetica, sans-serif;
+$v-font-size: 13px;
+$v-font-color: #37404E;
+$v-font-weight: 400;
+$v-link-text-decoration: none;
+$v-shadow: 0 1px 0 (v-shade 0.2);
+$v-bevel: inset 0 1px 0 v-tint;
+$v-unit-size: 30px;
+$v-gradient: v-linear 12%;
+$v-overlay-shadow: 0 3px 8px v-shade, 0 0 0 1px (v-shade 0.7);
+$v-shadow-opacity: 20%;
+$v-selection-overlay-padding-horizontal: 0;
+$v-selection-overlay-padding-vertical: 6px;
+$v-selection-item-border-radius: 0;
+
+@import "../valo/valo.scss";
+@mixin mytheme {
+    @include valo;
+    
+    .v-grid-header{
+    	background-color: red;
+    }
+    
+    .v-grid-header th{    
+    	text-transform: uppercase;
+    	font-weight: bold;    	
+    }
+    .v-table-row-blue{
+        background-color: red;        
+        color: #ffffff;
+    }
+    
+    .v-table-header-cell{
+        text-transform: uppercase;
+    	font-weight: bold;
+    	background-color:green;
+    	color: #ffffff;
+    }  
+    
+    
+    .v-table-cell-content-wordwrap-table{  
+        white-space: normal;
+        overflow: hidden;
+    }
+    
+    .horizontal{
+    	display: inline-block;
+    }
+    .icon-format-check, .icon-format-lock{
+    	text-align:center;
+    	background-color:red;
+    }   
+    
+    .icon-format-check .v-icon{
+    	font-size: 14px;
+    	color:#2f9e22;    	
+    }
+    
+    .icon-format-lock .v-icon{
+    	font-size: 14px;
+    	color:#565656;
+    	
+    }
+    
+    #lbHeader {
+    	margin: 20px;
+    	font-size: 40px;
+    	font-weight: bold;
+    	text-align: center;
+    	color:#4ad6e0;
+    }
+    
+     .backColor { 
+     	background-color:#F1F1F1;
+     }
+     
+     .align-center {
+  		text-align: center;
+	 }
+	.margin-label-search{
+		 padding-right: 30px;
+		 font-weight: bold;
+		 color: darkblue;
+	}    
+	.vMainLayout{
+	font-weight: bold;	
+	}
+	.border-grid{
+		box-shadow: 2px 0px 13px 2px #888888;
+	}
+	.select-all{
+		font-weight: bold;
+		 color: darkblue;
+		 margin-left: 35px;
+		 margin-bottom: 10px;
+		 visibility: hidden;
+	}
+	.sumSoLuong{
+		font-weight: bold;
+		 color: darkblue;
+		 margin-left: 35px;
+		 margin-bottom: 10px;		 
+	}
+	.sumRecord{
+		font-weight: bold;
+		 color: darkblue;
+		 margin-left: 40px;
+		 margin-bottom: 10px;		 
+	}
+	#btnSearch{
+	background-color:red;
+	margin-left:-110px;	
+	}
+	.confirmDialog{
+		height: 100px;
+		width: 270px;
+	}	
+	.notifSaved{
+	background-color:yellow;
+	color: red;
+	font-size: 16px;
+	 text-align: center;
+	 vertical-align: middle;
+	 font-weight: bold;
+	}
+	
+	.v-loading-indicator {
+    position: fixed !important;
+    z-index: 99999;
+    left: 0;
+    right: auto;
+    top: 0;
+    width: 50%;
+    opacity: 1;
+    height: 4px;
+    background-color: #BE2728;
+    pointer-events: none;
+    -webkit-transition: none;
+    -moz-transition: none;
+    transition: none;
+    -webkit-animation: v-progress-start 1000ms 200ms both;
+    -moz-animation: v-progress-start 1000ms 200ms both;
+    animation: v-progress-start 1000ms 200ms both;
+}
+.aaa{
+	background-color: red;
+}
+.aaa1{
+	background-color: green;
+}
+.baotrihethong{
+	color: red;
+	font-weight: bold;
+}
+.lblTinhTang{
+	font-weight: bold;
+	color: darkblue;
+	margin-top: 20px;
+}
+.lblTinhTang1{
+	font-weight: bold;
+	color: darkblue;	
+}
+.xxx{
+color: red;
+margin-top: 5px;
+}
+}

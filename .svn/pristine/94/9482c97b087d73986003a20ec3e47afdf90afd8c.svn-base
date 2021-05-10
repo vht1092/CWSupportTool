@@ -1,0 +1,17 @@
+/**
+ * 
+ */
+package cwst.com.repositories;
+
+import org.springframework.data.repository.CrudRepository;
+
+import cwst.com.entities.CwstCrdDetailChecker;
+
+/**
+ * @author chautk
+ */
+public interface CwstCrdDetailCheckerRepo extends CrudRepository<CwstCrdDetailChecker, Long> {
+
+	CwstCrdDetailChecker findByCrdId(long crdid);	
+
+}

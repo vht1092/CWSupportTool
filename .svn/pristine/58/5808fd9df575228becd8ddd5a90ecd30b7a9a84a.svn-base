@@ -1,0 +1,89 @@
+package cwst.com.entities;
+
+import java.io.Serializable;
+import javax.persistence.*;
+import java.math.BigDecimal;
+
+
+/**
+ * The persistent class for the CWST_SENDMAIL database table.
+ * 
+ */
+@Entity
+@Table(name="CWST_SENDMAIL")
+@NamedQuery(name="CwstSendmail.findAll", query="SELECT c FROM CwstSendmail c")
+public class CwstSendmail implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private CwstSendmailPK id;
+
+	@Column(precision=1)
+	private BigDecimal issend;
+
+	@Column(nullable=false, length=500)
+	private String mailcontent;
+
+	@Column(length=50)
+	private String mailtitle;
+
+	@Column(nullable=false, length=14)
+	private String mailtype;
+	
+	@Column(length=40)
+	private String mailto;
+
+	public CwstSendmail() {
+	}
+
+	public CwstSendmailPK getId() {
+		return this.id;
+	}
+
+	public void setId(CwstSendmailPK id) {
+		this.id = id;
+	}
+
+	public BigDecimal getIssend() {
+		return this.issend;
+	}
+
+	public void setIssend(BigDecimal issend) {
+		this.issend = issend;
+	}
+
+	public String getMailcontent() {
+		return this.mailcontent;
+	}
+
+	public void setMailcontent(String mailcontent) {
+		this.mailcontent = mailcontent;
+	}
+
+	public String getMailtitle() {
+		return this.mailtitle;
+	}
+
+	public void setMailtitle(String mailtitle) {
+		this.mailtitle = mailtitle;
+	}
+
+	public String getMailtype() {
+		return this.mailtype;
+	}
+
+	public void setMailtype(String mailtype) {
+		this.mailtype = mailtype;
+	}
+
+	public String getMailto() {
+		return mailto;
+	}
+
+	public void setMailto(String mailto) {
+		this.mailto = mailto;
+	}
+	
+	
+
+}

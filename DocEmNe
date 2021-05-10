@@ -1,0 +1,23 @@
+De cau hinh dong goi ung dung voi file .jar hoac file .war de deploy tren webserver doc tai lieu nay
+http://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#build-tool-plugins-maven-packaging
+
+Tai lieu ve SpringBoot: http://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/
+Tai lieu ve SpringJPA: http://docs.spring.io/spring-data/jpa/docs/1.11.0.RELEASE/reference/html/
+Tai lieu ve Spring application.properties: http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+Tai lieu ve SpringSecurity: http://docs.spring.io/spring-security/site/docs/4.2.2.RELEASE/reference/htmlsingle/
+
+Cach chay dong goi ung dung:
+  1. cd D:\Software\workspace-sts-3.7.1.RELEASE\CWSupportTool
+  2. mvnw package -DskipTests
+  3. vao thu muc target co se co file .jar hoac .war
+  4. file jar run bang cach java -jar tenfile.jar 
+
+ Thu muc dang luu file report:
+ D:\Software\CWST-LIVE\report
+ 
+ 
+ *** File excel import GTTN ghi nhan vao cot GTTN tren Grid
+ STATUS = 1: success
+ STATUS = 2: failed
+ 
+ *** Cot xacnhan_gttn = 1: Don vi xac nhan GTTN thanh cong

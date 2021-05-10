@@ -1,0 +1,263 @@
+package cwst.com.services;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import cwst.com.SecurityUtils;
+import cwst.com.TimeConverter;
+import cwst.com.entities.CwstCrdDetail;
+import cwst.com.repositories.CrdDetailRepo;
+
+@Service
+public class CrdDetailServiceImpl implements CrdDetailService {
+
+	@Autowired
+	private CrdDetailRepo crdDetailRepo;
+
+	private final TimeConverter timeConverter = new TimeConverter();
+
+	@Override
+	public List<Object[]> findAll(String fromdate, String todate, String branchcode, String crdtype, String username, String cif) {
+		return crdDetailRepo.findAll(fromdate, todate, branchcode, crdtype, username, cif);
+	}
+
+	@Override
+	public void saveDataFromFormContextMenu(String cifno, String custname, String pan, String crdtype, String crdprinsupp, String issuetype,
+			String issueDate, String type, String empCode, String empName, String brnchCode) {
+		CwstCrdDetail cwstCrdDetail = crdDetailRepo.findOneByIdx(cifno, custname, pan, crdtype, crdprinsupp, issuetype, issueDate);
+
+		if (cwstCrdDetail == null) {
+			cwstCrdDetail = new CwstCrdDetail();
+			cwstCrdDetail.setCifNo(cifno);
+			cwstCrdDetail.setCustName(custname);
+			cwstCrdDetail.setCrdType(crdtype);
+			cwstCrdDetail.setCrdPrinSupp(crdprinsupp);
+			cwstCrdDetail.setIssueType(issuetype);
+			cwstCrdDetail.setIssueDate(issueDate);
+			cwstCrdDetail.setPan(pan);
+		}
+		if ("TOMK".equals(type)) {
+			if (!cwstCrdDetail.getTransMkLock()) {
+				cwstCrdDetail.setTransMk(true);
+				cwstCrdDetail.setTransMkDate(timeConverter.getCurrentTime("SHORT"));
+			}
+		}
+		if ("RECMK".equals(type)) {
+			if (!cwstCrdDetail.getRecMkLock() && cwstCrdDetail.getTransMkLock()) {
+				cwstCrdDetail.setRecMk(true);
+				cwstCrdDetail.setRecMkDate(timeConverter.getCurrentTime("SHORT"));
+			}
+		}
+		if ("TOBRANCH".equals(type)) {
+			if (!cwstCrdDetail.getTransBranchLock() && cwstCrdDetail.getRecMkLock()) {
+				cwstCrdDetail.setTransBranch(true);
+				cwstCrdDetail.setTransBranchDate(timeConverter.getCurrentTime("SHORT"));
+				if (StringUtils.hasText(empCode)) {
+					cwstCrdDetail.setTransBranchEmpCode(empCode);
+				}
+				if (StringUtils.hasText(empName)) {
+					cwstCrdDetail.setTransBranchEmpName(empName);
+				}
+				if (StringUtils.hasText(brnchCode)) {
+					cwstCrdDetail.setFwBrnCde(brnchCode);
+				}
+			}
+		}
+		if ("TOEMP".equals(type)) {
+			if (!cwstCrdDetail.getTransEmpLock() && cwstCrdDetail.getTransBranchLock()) {
+				cwstCrdDetail.setTransEmp(true);
+				cwstCrdDetail.setTransEmpDate(timeConverter.getCurrentTime("SHORT"));
+				if (StringUtils.hasText(empCode)) {
+					cwstCrdDetail.setTransEmpCode(empCode);
+				}
+				if (StringUtils.hasText(empName)) {
+					cwstCrdDetail.setTransEmpName(empName);
+				}
+			}
+		}
+		if ("TOCUST".equals(type)) {
+			if (!cwstCrdDetail.getTransCustLock() && cwstCrdDetail.getTransEmpLock()) {
+				cwstCrdDetail.setTransCust(true);
+				cwstCrdDetail.setTransCustDate(timeConverter.getCurrentTime("SHORT"));
+			}
+		}
+		crdDetailRepo.save(cwstCrdDetail);
+	}
+
+	@Override
+	public void lockData(long id) {
+		CwstCrdDetail cwstCrdDetail = crdDetailRepo.findOneById(id);
+		if (cwstCrdDetail != null) {
+			if (SecurityUtils.hasRole("ROLE_HO")) {
+				// Khoa du lieu chuyen file cho MK
+				if (cwstCrdDetail.getTransMk() && cwstCrdDetail.getTransMkDate() != null && !cwstCrdDetail.getTransMkLock()) {
+					cwstCrdDetail.setTransMkLock(true);
+				}
+				// Khoa du lieu nhan file tu MK
+				if (cwstCrdDetail.getTransMkLock() && cwstCrdDetail.getRecMk() && cwstCrdDetail.getRecMkDate() != null
+						&& cwstCrdDetail.getRecMkLock() == false) {
+					cwstCrdDetail.setRecMkLock(true);
+				}
+				// Khoa du lieu chuyen the cho don vi
+				if (cwstCrdDetail.getRecMkLock() && cwstCrdDetail.getTransBranch() && cwstCrdDetail.getTransBranchDate() != null
+						&& cwstCrdDetail.getTransBranchLock() == false) {
+					cwstCrdDetail.setTransBranchLock(true);
+				}
+			}
+			if (SecurityUtils.hasRole("ROLE_DONVI")) {
+				// Khoa du lieu giao the cho nhan vien
+				if (cwstCrdDetail.getTransBranchLock() && cwstCrdDetail.getTransEmp() && cwstCrdDetail.getTransEmpDate() != null
+						&& cwstCrdDetail.getTransCustLock() == false) {
+					cwstCrdDetail.setTransEmpLock(true);
+				}
+				// Khoa du lieu giao the cho KH
+				if (cwstCrdDetail.getTransEmpLock() && cwstCrdDetail.getTransCust() && cwstCrdDetail.getTransCustDate() != null
+						&& cwstCrdDetail.getTransCustLock() == false) {
+					cwstCrdDetail.setTransCustLock(true);
+				}
+			}
+			crdDetailRepo.save(cwstCrdDetail);
+		}
+	}
+
+	@Override
+	public void updateDate(long id, String cifno, String custname, String pan, String crdtype, String crdprinsupp, String issuetype, String issueDate,
+			String date, String type) {
+		// saveData(cifno, cust_name,pan, crd_type, crd_prin_supp, issue_type, issue_date,type);
+		CwstCrdDetail cwstCrdDetail = crdDetailRepo.findOneById(id);
+		if ("TOMK".equals(type)) {
+			cwstCrdDetail.setTransMkDate(date);
+		}
+		if ("RECMK".equals(type)) {
+			cwstCrdDetail.setRecMkDate(date);
+		}
+		if ("TOBRANCH".equals(type)) {
+			cwstCrdDetail.setTransBranchDate(date);
+
+		}
+		if ("TOEMP".equals(type)) {
+			cwstCrdDetail.setTransEmpDate(date);
+
+		}
+		if ("TOCUST".equals(type)) {
+			cwstCrdDetail.setTransBranchDate(date);
+
+		}
+		crdDetailRepo.save(cwstCrdDetail);
+
+	}
+
+	@Override
+	public CwstCrdDetail findOneById(long id) {
+		CwstCrdDetail cwstCrdDetail = null;
+		cwstCrdDetail = crdDetailRepo.findOne(id);
+		if (cwstCrdDetail != null) {
+			return cwstCrdDetail;
+		} else {
+			cwstCrdDetail = new CwstCrdDetail();
+			cwstCrdDetail.setId(id);
+			return cwstCrdDetail;
+		}
+	}
+
+	@Override
+	public void saveDataFromForm(long id, String cifno, String custname, String pan, String crdtype, String crdprinsupp, String issuetype,
+			String issuedate, boolean transmk, String tranmkdate, boolean recmk, String recmkdate, boolean transbranch, String transbranchdate,
+			String tranbranchempcode, boolean tranemp, String tranempcode, String tranempname, String tranempDate, boolean transcust,
+			String transcustdate, String tranbranchempname, String transbranchfwcde, String transbranchnote) {
+		CwstCrdDetail cwstCrdDetail = null;
+
+		cwstCrdDetail = crdDetailRepo.findOneByIdx(cifno, custname, pan, crdtype, crdprinsupp, issuetype, issuedate);
+		if (cwstCrdDetail == null) {
+			cwstCrdDetail = new CwstCrdDetail();
+			cwstCrdDetail.setCifNo(cifno);
+			cwstCrdDetail.setCustName(custname);
+			cwstCrdDetail.setPan(pan);
+			cwstCrdDetail.setCrdType(crdtype);
+			cwstCrdDetail.setCrdPrinSupp(crdprinsupp);
+			cwstCrdDetail.setIssueType(issuetype);
+			cwstCrdDetail.setIssueDate(issuedate);
+		}
+		cwstCrdDetail.setTransMk(transmk);
+		if (!tranmkdate.equals("null") && tranmkdate != null) {
+			cwstCrdDetail.setTransMkDate(tranmkdate);
+		}
+		cwstCrdDetail.setRecMk(recmk);
+		if (!recmkdate.equals("null") && recmkdate != null) {
+			cwstCrdDetail.setRecMkDate(recmkdate);
+		}
+		cwstCrdDetail.setTransBranch(transbranch);
+		if (!transbranchdate.equals("null") && transbranchdate != null) {
+			cwstCrdDetail.setTransBranchDate(transbranchdate);
+		}
+		if (!tranbranchempcode.equals("null") && tranbranchempcode != null) {
+			cwstCrdDetail.setTransBranchEmpCode(tranbranchempcode);
+		}
+		if (!tranbranchempname.equals("null") && tranbranchempname != null) {
+			cwstCrdDetail.setTransBranchEmpName(tranbranchempname);
+		}
+		if (!transbranchnote.equals("null") && transbranchnote != null) {
+			cwstCrdDetail.setTransBranchNote(transbranchnote);
+		}
+		if (!transbranchfwcde.equals("null") && transbranchfwcde != null) {
+			cwstCrdDetail.setFwBrnCde(transbranchfwcde);
+		}
+		cwstCrdDetail.setTransEmp(tranemp);
+		if (!tranempcode.equals("null") && tranempcode != null) {
+			cwstCrdDetail.setTransEmpCode(tranempcode);
+		}
+		if (!tranempname.equals("null") && tranempname != null) {
+			cwstCrdDetail.setTransEmpName(tranempname);
+		}
+		if (!tranempDate.equals("null") && tranempDate != null) {
+			cwstCrdDetail.setTransEmpDate(tranempDate);
+		}
+		cwstCrdDetail.setTransCust(transcust);
+		if (!transcustdate.equals("null") && transcustdate != null) {
+			cwstCrdDetail.setTransCustDate(transcustdate);
+		}
+		crdDetailRepo.save(cwstCrdDetail);
+	}
+
+	@Override
+	public CwstCrdDetail findOneByIdx(String cifno, String custname, String pan, String crdtype, String prinsupp, String issuetype,
+			String issuedate) {
+		CwstCrdDetail cwstCrdDetail = crdDetailRepo.findOneByIdx(cifno, custname, pan, crdtype, prinsupp, issuetype, issuedate);
+		if (cwstCrdDetail == null) {
+			cwstCrdDetail = new CwstCrdDetail();
+		}
+		return cwstCrdDetail;
+	}
+
+	@Override
+	public void checkData(long id) {
+		final CwstCrdDetail cwstCrdDetail = crdDetailRepo.findOne(id);
+		if (cwstCrdDetail != null) {
+			if (SecurityUtils.hasRole("ROLE_HO") && SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_CHECKER")) {
+				if (cwstCrdDetail.getTransMkLock()) {// Neu da khoa giao the MK
+					cwstCrdDetail.setTransMkIscheck(true);
+				}
+				if (cwstCrdDetail.getRecMkLock()) {// Neu da khoa giao the RecMK
+					cwstCrdDetail.setRecMkIscheck(true);
+				}
+				if (cwstCrdDetail.getTransBranchLock()) {// Neu da khoa giao the cho cho don vi
+					cwstCrdDetail.setTransBranchIscheck(true);
+				}
+			}
+			if (SecurityUtils.hasRole("ROLE_DONVI") && SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_CHECKER")) {
+				if (cwstCrdDetail.getTransEmpLock()) {// Neu da khoa giao the nhan vien
+					cwstCrdDetail.setTransEmpIscheck(true);
+				}
+				if (cwstCrdDetail.getTransCustLock()) {// Neu da khoa giao the cho khach hang
+					cwstCrdDetail.setTransCustIscheck(true);
+				}
+			}
+			crdDetailRepo.save(cwstCrdDetail);
+		}
+
+	}
+
+}

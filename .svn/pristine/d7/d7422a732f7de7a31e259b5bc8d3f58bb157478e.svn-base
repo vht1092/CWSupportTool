@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Implementation-Title: CWSupportTool
+Implementation-Version: 0.0.1-BETA
+Built-By: chautk
+Implementation-Vendor-Id: scb.com
+Build-Jdk: 1.8.0_121
+Implementation-URL: http://projects.spring.io/spring-boot/CWSupportToo
+ l/
+Created-By: Maven Integration for Eclipse
+Implementation-Vendor: Pivotal Software, Inc.
+

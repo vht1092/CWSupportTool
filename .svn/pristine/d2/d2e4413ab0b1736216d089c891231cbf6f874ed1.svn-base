@@ -1,0 +1,138 @@
+package cwst.com.services;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.persistence.ParameterMode;
+import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
+import javax.persistence.StoredProcedureQuery;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import cwst.com.SecurityUtils;
+import cwst.com.entities.CwstCaseDetail;
+
+@Service
+@Transactional
+public class CwstCaseDetailServiceImpl implements CwstCaseDetailService {
+
+	@PersistenceContext
+	protected EntityManager em;
+	private int iNumberRow;
+	private static final Logger LOGGER = LoggerFactory.getLogger(CwstCaseDetailServiceImpl.class);
+
+	public int getiNumberRow() {
+		return iNumberRow;
+	}
+
+	@Override
+	public void scanData() {
+		StoredProcedureQuery query = em.createStoredProcedureQuery("CWST_PRO_DATASCANER");
+		query.execute();
+		// return cwstCaseDetailRepo.DataScaner(stat);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<Object[]> findAll(String type, String processingno, String date, int page, String assign) {
+		String username = SecurityUtils.getUserName();
+		final StoredProcedureQuery query = em.createStoredProcedureQuery("CWST_PRO_GETDATA");
+		query.registerStoredProcedureParameter("P_TYPE", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_PROCESSINGNO", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_DATE", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_PAGE", Integer.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_ASSIGNMENT", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_USERNAME", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_NUMROW", Integer.class, ParameterMode.OUT);
+		query.registerStoredProcedureParameter("OUT_RS", void.class, ParameterMode.REF_CURSOR);
+
+		query.setParameter("P_TYPE", type);
+		query.setParameter("P_PROCESSINGNO", processingno);
+		query.setParameter("P_DATE", date);
+		query.setParameter("P_PAGE", page);
+		query.setParameter("P_ASSIGNMENT", assign);
+		query.setParameter("P_USERNAME", username);
+
+		query.execute();
+		iNumberRow = (int) query.getOutputParameterValue("P_NUMROW");
+
+		return query.getResultList();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<Object[]> findAll() {
+		final StoredProcedureQuery query = em.createStoredProcedureQuery("CWST_PRO_GETDATA");
+		query.registerStoredProcedureParameter("P_TYPE", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_PROCESSINGNO", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_DATE", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_PAGE", Integer.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_ASSIGNMENT", String.class, ParameterMode.IN);
+		query.registerStoredProcedureParameter("P_NUMROW", Integer.class, ParameterMode.OUT);
+		query.registerStoredProcedureParameter("OUT_RS", void.class, ParameterMode.REF_CURSOR);
+
+		query.setParameter("P_TYPE", "");
+		query.setParameter("P_PROCESSINGNO", "");
+		query.setParameter("P_DATE", "");
+		query.setParameter("P_PAGE", 0);
+		query.setParameter("P_ASSIGNMENT", "");
+		query.execute();
+		iNumberRow = (int) query.getOutputParameterValue("P_NUMROW");
+
+		return query.getResultList();
+	}
+
+	@Override
+	public void getNewestData() {
+		final StoredProcedureQuery query = em.createStoredProcedureQuery("CWST_PRO_GETNEWESTDATA");
+		query.execute();
+
+	}
+
+	@Override
+	public CwstCaseDetail findOneByIdCaseId(String caseid) {
+		final Query query = em.createQuery("from CwstCaseDetail c where c.caseId=?1", CwstCaseDetail.class);
+		query.setParameter(1, caseid);
+		try {
+			return (CwstCaseDetail) query.getSingleResult();
+		} catch (NoResultException ex) {
+			LOGGER.error(ex.getMessage());
+			return null;
+		} catch (Exception ex) {
+			return null;
+		}
+	}
+
+	@Override
+	public void save(String caseid, String creuser, BigDecimal cretms, String cif, String custname, String casetype, String desc, String groupid,
+			String userid, String remarks, String caseresult) {
+		CwstCaseDetail cwstCaseDetail = findOneByIdCaseId(caseid);
+		if (cwstCaseDetail == null) {
+			cwstCaseDetail = new CwstCaseDetail();
+			cwstCaseDetail.setCaseId(caseid);
+			cwstCaseDetail.setUsrId(userid);
+			cwstCaseDetail.setGroupId(groupid);
+			cwstCaseDetail.setCif(cif);
+			cwstCaseDetail.setCreTms(cretms);
+			cwstCaseDetail.setCustName(custname);
+			cwstCaseDetail.setCaseType(casetype);
+			cwstCaseDetail.setDescription(desc);
+			cwstCaseDetail.setRemarks(remarks);
+			cwstCaseDetail.setCaseResult(caseresult);
+			cwstCaseDetail.setCreUser(creuser);
+			try {
+				em.persist(cwstCaseDetail);
+			} catch (Exception ex) {
+				LOGGER.error(ex.getMessage());
+			}
+		}
+
+	}
+
+}

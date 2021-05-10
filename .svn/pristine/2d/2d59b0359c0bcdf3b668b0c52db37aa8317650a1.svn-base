@@ -1,0 +1,129 @@
+package cwst.com;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import cwst.com.entities.CwstCaseDetail;
+import cwst.com.entities.CwstSendmail;
+import cwst.com.services.CwstCaseDetailService;
+import cwst.com.services.CwstSendmailService;
+import cwst.com.services.CwstSentmailService;
+
+@Configuration
+@EnableScheduling
+@EnableAsync
+public class CwSupportToolConfig {
+
+	@Autowired
+	private CwstCaseDetailService cwstCaseDetailService;
+	@Autowired
+	private JavaMailSender javaMailSender;
+	@Autowired
+	private CwstSendmailService cwstSendmailService;
+	@Autowired
+	private CwstSentmailService cwstSentmailService;
+	private static final Logger LOGGER = LoggerFactory.getLogger(CwSupportToolConfig.class);
+
+	private static final List<String> CASE_STATUS = Arrays.asList("DECLINED", "CANCELED", "ROUTED", "NEW");
+	private static final List<String> CASE_REMIND = Arrays.asList("REMIND");
+
+	// Kiem tra trang thai cua case neu "DECLINED", "CANCELED" thi se khong kiem tra, 10s
+	@Scheduled(initialDelay = 10000, fixedDelay = 10000)
+	private void scanData() {
+		cwstCaseDetailService.scanData();
+	}
+
+	// Quet du lieu moi, 10s
+	@Scheduled(initialDelay = 10000, fixedDelay = 10000)
+	private void getNewestData() {
+		cwstCaseDetailService.getNewestData();
+	}
+
+	// Gui mail moi 20s
+	@Scheduled(initialDelay = 10000, fixedDelay = 20000)
+	private void sendMailer() {
+		cwstSendmailService.findAllByMailtypeIn(CASE_STATUS).forEach(s -> {
+			sendMail(s.getMailto(), s.getMailcontent(), s.getMailtitle());
+			if (CASE_STATUS.contains(s.getMailtype())) {
+				try {
+					cwstSentmailService.save(s.getId().getCaseId(), s.getMailtype(), s.getMailcontent());
+					cwstSendmailService.delete(s.getId().getCaseId(), s.getMailtype());
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage());
+				}
+			}
+		});
+	}
+
+	// Gui mail 8h moi ngay
+	@Scheduled(cron = "0 0 8 * * mon-sat")
+	private void sendMail8HourEveryDay() {
+		final DateFormat format = new SimpleDateFormat("yyyyMMdd");
+		final Date today = Calendar.getInstance().getTime();
+		final String sFormat = format.format(today) + "000000000";
+
+		List<CwstSendmail> result = cwstSendmailService.findAllByMailtypeIn(CASE_REMIND).stream()
+				.filter(s -> s.getId().getCreTms() < Long.parseLong(sFormat)).collect(Collectors.toList());
+		result.forEach(s -> {
+			final CwstCaseDetail cwstCaseDetail = cwstCaseDetailService.findOneByIdCaseId(s.getId().getCaseId());
+			//@formatter:off
+			final String sEmailContent = String.format(
+					"Creation User: %s <br/>" + 
+				    "Creation Time: %s <br/>" + 
+					"Customer Name: %s <br/>" + 
+				    "CIF: %s <br/>" + 
+					"Case Type: %s <br/>"+ 
+				    "Description:%s <br/>" + 
+					"Result: %s <br/>" + 
+				    "Content: %s",
+		    // @formatter:on
+					cwstCaseDetail.getCreUser(), cwstCaseDetail.getCreTms(), cwstCaseDetail.getCustName(), cwstCaseDetail.getCif(),
+					cwstCaseDetail.getCaseType(), cwstCaseDetail.getDescription(), cwstCaseDetail.getCaseResult(), s.getMailcontent());
+			sendMail(s.getMailto(), sEmailContent, s.getMailtitle());
+			if (CASE_REMIND.contains(s.getMailtype())) {
+				cwstSentmailService.save(s.getId().getCaseId(), s.getMailtype(), s.getMailcontent());
+				cwstSendmailService.delete(s.getId().getCaseId(), s.getMailtype());
+			}
+		});
+	}
+
+	private void sendMail(final String address, final String content, final String subject) {
+		if (address != null && !address.isEmpty()) {
+			MimeMessage mail = javaMailSender.createMimeMessage();
+			try {
+				MimeMessageHelper helper = new MimeMessageHelper(mail);
+				// address String to String []
+				// helper.setTo(address.split(","));
+				helper.setTo("linhntd1@scb.com.vn");
+				helper.setFrom(new InternetAddress("noreply@scb.com.vn"));
+				helper.setBcc(new String[] { "chautk@scb.com.vn", "linhntd1@scb.com.vn" });
+				helper.setReplyTo(new InternetAddress("noreply@scb.com.vn"));
+				helper.setSubject(subject);
+				helper.setText(content, true);
+				javaMailSender.send(mail);
+				LOGGER.info("Send mail to: " + address + " - subject: " + subject);
+			} catch (MessagingException e) {
+				LOGGER.error("Send mail error: " + e.getMessage());
+			}
+		}
+	}
+}

@@ -1,0 +1,1353 @@
+package cwst.com.views;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+
+import javax.annotation.PostConstruct;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
+import org.vaadin.haijian.ExcelExporter;
+
+import com.vaadin.addon.contextmenu.ContextMenu;
+import com.vaadin.data.Item;
+import com.vaadin.data.Property.ReadOnlyException;
+import com.vaadin.data.Validator;
+import com.vaadin.data.Validator.InvalidValueException;
+import com.vaadin.data.fieldgroup.BeanFieldGroup;
+import com.vaadin.data.fieldgroup.FieldGroup.CommitEvent;
+import com.vaadin.data.fieldgroup.FieldGroup.CommitException;
+import com.vaadin.data.fieldgroup.FieldGroup.CommitHandler;
+import com.vaadin.data.util.IndexedContainer;
+import com.vaadin.data.util.converter.Converter.ConversionException;
+import com.vaadin.data.util.converter.StringToBooleanConverter;
+import com.vaadin.data.validator.StringLengthValidator;
+import com.vaadin.event.ItemClickEvent;
+import com.vaadin.event.ShortcutAction.KeyCode;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.FontAwesome;
+import com.vaadin.shared.ui.datefield.Resolution;
+import com.vaadin.spring.annotation.SpringView;
+import com.vaadin.ui.AbstractComponent;
+import com.vaadin.ui.AbstractSelect.ItemCaptionMode;
+import com.vaadin.ui.AbstractTextField;
+import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
+import com.vaadin.ui.ComboBox;
+import com.vaadin.ui.DateField;
+import com.vaadin.ui.Field;
+import com.vaadin.ui.FormLayout;
+import com.vaadin.ui.Grid;
+import com.vaadin.ui.Grid.CellReference;
+import com.vaadin.ui.Grid.CellStyleGenerator;
+import com.vaadin.ui.Grid.HeaderRow;
+import com.vaadin.ui.Grid.SelectionMode;
+import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Notification;
+import com.vaadin.ui.Notification.Type;
+import com.vaadin.ui.Table;
+import com.vaadin.ui.TextField;
+import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
+import com.vaadin.ui.renderers.HtmlRenderer;
+import com.vaadin.ui.themes.ValoTheme;
+
+import cwst.com.CwSupportToolUI;
+import cwst.com.SecurityUtils;
+import cwst.com.StringToDateFormat;
+import cwst.com.TimeConverter;
+import cwst.com.entities.CwstCrdDetail;
+import cwst.com.services.CrdDetailService;
+import cwst.com.services.FullBranchService;
+
+@SpringView(name = CardDistributionView.VIEW_NAME, ui = CwSupportToolUI.class)
+public class CardDistributionView extends VerticalLayout implements View {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(CardWorkSupportToolView.class);
+	private static final long serialVersionUID = 1L;
+	public static final String VIEW_NAME = "quan-ly-phan-phoi-the";
+
+	@Autowired
+	private CrdDetailService crdDetService;
+	@Autowired
+	private FullBranchService fullBrchService;
+
+	private static final String TRANSFERED = "Đã chuyển", RECEIVED = "Đã nhận";
+	private final IndexedContainer idxContainer = new IndexedContainer();
+	private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+	private final TimeConverter timeConverter = new TimeConverter();
+	private final HashMap<String, String> hmapType = new HashMap<String, String>();
+	private DateField dfRecMkDate, dtTransMkDate, dfTransBranchDate, dfTransEmpDate, dfTransCustDate, dfFromDate, dfToDate;
+	private CheckBox chbTransMk, chbRecMk, chbTransBranch, chbTransEmp, chbTransCust;
+	private ComboBox cbxBrand, cbxCrdType;
+	private TextField txfTransBranchEmpCode, txfTransBranchEmpName, txfTransBranchFwBrch, txfTransEmpName, txfTransEmpCode, txfTransBranchNote,
+			txfCif;
+	private Grid grid;
+	private BeanFieldGroup<CwstCrdDetail> fieldGroup;
+
+	@PostConstruct
+	void init() {
+		hmapType.put("trans_mk_date", "TOMK");
+		hmapType.put("rec_mk_date", "RECMK");
+		hmapType.put("trans_branch_date", "TOBRANCH");
+		hmapType.put("trans_emp_date", "TOEMP");
+		hmapType.put("trans_cust_date", "TOCUST");
+		if (StringUtils.hasText(SecurityUtils.getUserName())) {
+			initUI();
+		}
+	}
+
+	@Override
+	public void enter(ViewChangeEvent event) {
+	}
+
+	private void initUI() {
+		setSizeFull();
+		setMargin(true);
+		setSpacing(true);
+		initGrid();
+		createContextMenu(grid);
+
+		final Button btSave = new Button("Lưu");
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.addClickListener(evt -> {
+			Notification.show("Đã lưu dữ liệu", Type.HUMANIZED_MESSAGE);
+			cmdLockData_Button();
+		});
+		if (SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") || SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			btSave.setVisible(true);
+		} else {
+			btSave.setVisible(false);
+		}
+
+		final ExcelExporter excelExporter = new ExcelExporter();
+		excelExporter.setCaption("XLS");
+		excelExporter.setIcon(FontAwesome.DOWNLOAD);
+		excelExporter.setStyleName(ValoTheme.BUTTON_FRIENDLY);
+		excelExporter.addClickListener(evt -> {
+			excelExporter.setTableToBeExported(initDataExport());
+		});
+
+		final HorizontalLayout buttonLayout = new HorizontalLayout();
+		buttonLayout.setSpacing(true);
+		buttonLayout.addComponent(btSave);
+		buttonLayout.addComponent(excelExporter);
+
+		// Tao cac truong tim kiem
+		FormLayout searchForm = createSearchField();
+
+		addComponent(searchForm);
+		addComponent(grid);
+		addComponent(buttonLayout);
+
+		setExpandRatio(searchForm, 0);
+		setExpandRatio(grid, 1);
+		setExpandRatio(buttonLayout, 2);
+	}
+
+	private void initGrid() {
+		idxContainer.addContainerProperty("stt", String.class, "");
+		idxContainer.addContainerProperty("id", String.class, "");
+		idxContainer.addContainerProperty("cif", String.class, "");
+		idxContainer.addContainerProperty("crd_brd", String.class, "");
+		idxContainer.addContainerProperty("cust_name", String.class, "");
+		idxContainer.addContainerProperty("main_sub", String.class, "");
+		idxContainer.addContainerProperty("pan_mask", String.class, "");
+		idxContainer.addContainerProperty("issue_type", String.class, "");
+		idxContainer.addContainerProperty("issue_date", String.class, "");
+		idxContainer.addContainerProperty("brch_code", String.class, "");
+		// Chuyen file den MK
+		idxContainer.addContainerProperty("trans_mk", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_mk_date", String.class, "");
+		idxContainer.addContainerProperty("trans_mk_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_mk_check", Boolean.class, false);
+		idxContainer.addContainerProperty("rec_mk", Boolean.class, false);
+		idxContainer.addContainerProperty("rec_mk_date", String.class, "");
+		idxContainer.addContainerProperty("rec_mk_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("rec_mk_check", Boolean.class, false);
+		// Chuyen the ve don vi
+		idxContainer.addContainerProperty("trans_branch", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_branch_date", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_emp_code", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_emp_name", String.class, "");
+
+		idxContainer.addContainerProperty("trans_branch_fw", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_note", String.class, "");
+		idxContainer.addContainerProperty("trans_branch_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_branch_check", Boolean.class, false);
+
+		idxContainer.addContainerProperty("trans_emp", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_emp_date", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_code", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_name", String.class, "");
+		idxContainer.addContainerProperty("trans_emp_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_emp_check", Boolean.class, false);
+		// Giao the cho KH
+		idxContainer.addContainerProperty("trans_cust", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_cust_date", String.class, "");
+		idxContainer.addContainerProperty("trans_cust_lock", Boolean.class, false);
+		idxContainer.addContainerProperty("trans_cust_check", Boolean.class, false);
+		idxContainer.addContainerProperty("pan", String.class, "");
+
+		grid = new Grid();
+		grid.setSizeFull();
+		grid.setContainerDataSource(idxContainer);
+		grid.setSelectionMode(SelectionMode.MULTI);
+		grid.getColumn("stt");
+		grid.getColumn("cif").setHeaderCaption("Số Cif");
+		grid.getColumn("cif").setWidth(80f);
+		grid.getColumn("crd_brd").setHeaderCaption("Loại Thẻ");
+		grid.getColumn("crd_brd").setWidth(100f);
+		grid.getColumn("cust_name").setHeaderCaption("Tên Chủ Thẻ");
+		grid.getColumn("cust_name").setWidth(216f);
+		grid.getColumn("main_sub").setHeaderCaption("Chính/Phụ");
+		grid.getColumn("pan_mask").setHeaderCaption("Số Thẻ");
+		grid.getColumn("pan_mask").setWidth(155f);
+		grid.getColumn("issue_type").setHeaderCaption("Loại Phát Hành");
+		grid.getColumn("issue_date").setHeaderCaption("Ngày Phát Hành");
+		grid.getColumn("brch_code").setHeaderCaption("Mã Đơn Vị");
+		grid.getColumn("issue_date").setConverter(new StringToDateFormat());
+		grid.getColumn("trans_mk").setHeaderCaption("Đã Chuyển").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_mk").setRenderer(new HtmlRenderer());
+		grid.getColumn("trans_mk_date").setHeaderCaption("Ngày Hoàn Yhành");
+		grid.getColumn("trans_mk_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_mk_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+		;
+		grid.getColumn("rec_mk").setHeaderCaption("Đã Nhận").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("rec_mk").setRenderer(new HtmlRenderer());
+		grid.getColumn("rec_mk_date").setHeaderCaption("Ngày Hoàn Thành");
+		grid.getColumn("rec_mk_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("rec_mk_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+
+		// Chuyen the ve don vi
+		grid.getColumn("trans_branch").setHeaderCaption("Đã Nhận").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_branch").setRenderer(new HtmlRenderer());
+		grid.getColumn("trans_branch_emp_code").setHeaderCaption("MSNV");
+		grid.getColumn("trans_branch_emp_code").setWidth(66f);
+		grid.getColumn("trans_branch_emp_name").setHeaderCaption("Tên Nhân Viên");
+		grid.getColumn("trans_branch_note").setHeaderCaption("Ghi Chú");
+		grid.getColumn("trans_branch_fw").setHeaderCaption("Chuyển Tiếp Đơn Vị");
+
+		grid.getColumn("trans_branch_date").setHeaderCaption("Ngày Hoàn Thành");
+
+		grid.getColumn("trans_branch_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_branch_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+
+		// Chuyen cho NVKD
+		grid.getColumn("trans_emp").setHeaderCaption("Đã Chuyển").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_emp").setRenderer(new HtmlRenderer());
+		grid.getColumn("trans_emp_date").setHeaderCaption("Ngày Hoàn Thành");
+		grid.getColumn("trans_emp_name").setHeaderCaption("Họ Tên");
+		grid.getColumn("trans_emp_name").setWidth(216f);
+		grid.getColumn("trans_emp_code").setHeaderCaption("MSNV");
+		grid.getColumn("trans_emp_code").setWidth(66f);
+		grid.getColumn("trans_emp_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_emp_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+
+		// Giao the cho KH
+		grid.getColumn("trans_cust").setHeaderCaption("Đã Giao").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK.getHtml(), ""));
+		grid.getColumn("trans_cust").setRenderer(new HtmlRenderer());
+		grid.getColumn("trans_cust_date").setHeaderCaption("Ngày Hoàn Thành");
+		grid.getColumn("trans_cust_lock").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.LOCK.getHtml(), ""));
+		grid.getColumn("trans_cust_check").setHeaderCaption("").setRenderer(new HtmlRenderer(),
+				new StringToBooleanConverter(FontAwesome.CHECK_SQUARE.getHtml(), ""));
+
+		grid.getColumn("pan").setHidden(true);
+		grid.getColumn("id").setHidden(true);
+
+		if (SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") || SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT")
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			grid.addItemClickListener(evt -> {
+				cmdShowEditForm_GridClickListener(evt);
+			});
+		}
+
+		grid.setCellStyleGenerator(new CellStyleGenerator() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public String getStyle(CellReference cell) {
+				// @formatter:off
+				if (cell.getPropertyId().equals("trans_mk_check") 
+						|| cell.getPropertyId().equals("rec_mk_check")
+						|| cell.getPropertyId().equals("trans_branch_check") 
+						|| cell.getPropertyId().equals("trans_emp_check")
+						|| cell.getPropertyId().equals("trans_cust_check")	
+						|| cell.getPropertyId().equals("trans_mk") 
+						|| cell.getPropertyId().equals("rec_mk")
+						|| cell.getPropertyId().equals("trans_branch")
+						|| cell.getPropertyId().equals("trans_emp")
+						|| cell.getPropertyId().equals("trans_cust")
+		       // @formatter:on
+				) {
+					if ((boolean) cell.getValue() == true) {
+						return "icon-format-check";
+					}
+				}
+
+				if (cell.getPropertyId().equals("trans_mk_lock") || cell.getPropertyId().equals("rec_mk_lock")
+						|| cell.getPropertyId().equals("trans_branch_lock") || cell.getPropertyId().equals("trans_emp_lock")
+						|| cell.getPropertyId().equals("trans_cust_lock")) {
+					if ((boolean) cell.getValue() == true) {
+						return "icon-format-lock";
+					}
+				}
+
+				return "";
+			}
+
+		});
+
+		HeaderRow extraHeader = grid.prependHeaderRow();
+		extraHeader.join("trans_mk", "trans_mk_date", "trans_mk_lock", "trans_mk_check").setText("Chuyển File Cty MK");
+		extraHeader.join("rec_mk", "rec_mk_date", "rec_mk_lock", "rec_mk_check").setText("Nhận Thẻ Từ MK");
+		extraHeader.join("trans_branch", "trans_branch_emp_code", "trans_branch_emp_name", "trans_branch_date", "trans_branch_lock",
+				"trans_branch_fw", "trans_branch_note", "trans_branch_check").setText("Đơn Vị Đã Nhận Thẻ");
+		extraHeader.join("trans_emp", "trans_emp_date", "trans_emp_name", "trans_emp_code", "trans_emp_lock", "trans_emp_check")
+				.setText("Đơn Vị Giao Thẻ Nhân Viên");
+		extraHeader.join("trans_cust", "trans_cust_date", "trans_cust_lock", "trans_cust_check").setText("Giao Thẻ Khách Hàng");
+	}
+
+	@SuppressWarnings("unchecked")
+	private FormLayout createSearchField() {
+		// Form
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setSpacing(true);
+		txfCif = new TextField("CIF");
+
+		dfFromDate = new DateField("Từ ngày");
+		dfToDate = new DateField("Đến ngày");
+		cbxBrand = new ComboBox("Đơn Vị");
+		cbxBrand.addContainerProperty("description", String.class, "");
+		cbxBrand.setItemCaptionMode(ItemCaptionMode.PROPERTY);
+		cbxBrand.setItemCaptionPropertyId("description");
+		fullBrchService.findByUserName(SecurityUtils.getUserName()).forEach(s -> {
+			final Item item = cbxBrand.addItem(s.getBranchCode());
+			item.getItemProperty("description").setValue(s.getBranchName().trim() + " - " + s.getBranchCode());
+		});
+		// final ComboBox cbUnit = new ComboBox("Đơn vị");
+		cbxCrdType = new ComboBox("Loại thẻ");
+		cbxCrdType.addItems("all", "mc", "vc");
+		cbxCrdType.setItemCaption("all", "Tất cả");
+		cbxCrdType.setItemCaption("mc", "MasterCard");
+		cbxCrdType.setItemCaption("vc", "Visa Card");
+		cbxCrdType.setNullSelectionAllowed(false);
+		cbxCrdType.setNullSelectionItemId(1);
+
+		final Button btSearch = new Button("Tìm");
+		btSearch.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSearch.setIcon(FontAwesome.SEARCH);
+		btSearch.addClickListener(evt -> {
+			cmdSearch_buttonClick();
+		});
+
+		dfToDate.setDateFormat("dd/MM/yyyy");
+		dfFromDate.setDateFormat("dd/MM/yyyy");
+
+		formLayout.addComponent(dfFromDate);
+		formLayout.addComponent(dfToDate);
+		formLayout.addComponent(txfCif);
+		formLayout.addComponent(cbxBrand);
+		formLayout.addComponent(cbxCrdType);
+		formLayout.addComponent(btSearch);
+		return formLayout;
+	}
+
+	@SuppressWarnings("unchecked")
+	private void initData() {
+		if (!idxContainer.getItemIds().isEmpty()) {
+			idxContainer.removeAllItems();
+		}
+		final String sFromDate = dfFromDate.getValue() != null ? dateFormat.format(dfFromDate.getValue()) : "";
+		final String sToDate = dfToDate.getValue() != null ? dateFormat.format(dfToDate.getValue()) : "";
+		final String sBrand = cbxBrand.getValue() != null ? cbxBrand.getValue().toString() : "";
+		final String sCrdType = cbxCrdType.getValue() != null ? cbxCrdType.getValue().toString() : "";
+		final String sCif = txfCif.getValue() != null ? txfCif.getValue().toString() : "";
+		crdDetService.findAll(sFromDate, sToDate, sBrand, sCrdType, SecurityUtils.getUserName(), sCif).forEach(s -> {
+			Object itemId = idxContainer.addItem();
+			Item item = idxContainer.getItem(itemId);
+			item.getItemProperty("stt").setValue(s[0] != null ? s[0].toString() : "");
+			item.getItemProperty("cif").setValue(s[1] != null ? s[1].toString() : "");
+			item.getItemProperty("crd_brd").setValue(s[2] != null ? s[2].toString() : "");
+			item.getItemProperty("cust_name").setValue(s[3] != null ? s[3].toString() : "");
+			item.getItemProperty("main_sub").setValue(s[4] != null ? s[4].toString() : "");
+			item.getItemProperty("pan_mask").setValue(s[5] != null ? s[5].toString() : "");
+			item.getItemProperty("issue_type").setValue(s[6] != null ? s[6].toString() : "");
+			item.getItemProperty("issue_date").setValue(s[7] != null ? s[7].toString() : "");
+			item.getItemProperty("brch_code").setValue(s[8] != null ? s[8].toString() : "");
+			// Chuyen file den MK
+			item.getItemProperty("trans_mk").setValue(s[10].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_mk_date").setValue(s[11] != null ? convertDateFormat(s[11].toString()) : "");
+			item.getItemProperty("trans_mk_lock").setValue(s[12].toString().equals("0") ? false : true);
+			item.getItemProperty("rec_mk").setValue(s[13].toString().equals("0") ? false : true);
+			item.getItemProperty("rec_mk_date").setValue(s[14] != null ? convertDateFormat(s[14].toString()) : "");
+			item.getItemProperty("rec_mk_lock").setValue(s[15].toString().equals("0") ? false : true);
+			// Chuyen the ve don vi
+			item.getItemProperty("trans_branch").setValue(s[16].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_date").setValue(s[17] != null ? convertDateFormat(s[17].toString()) : "");
+			item.getItemProperty("trans_branch_lock").setValue(s[18].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_emp_code").setValue(s[19] != null ? s[19].toString() : "");
+			item.getItemProperty("trans_emp").setValue(s[20].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_emp_date").setValue(s[21] != null ? convertDateFormat(s[21].toString()) : "");
+			item.getItemProperty("trans_emp_name").setValue(s[22] != null ? s[22].toString() : "");
+			item.getItemProperty("trans_emp_code").setValue(s[23] != null ? s[23].toString() : "");
+			item.getItemProperty("trans_emp_lock").setValue(s[24].toString().equals("0") ? false : true);
+			// Giao the cho KH
+			item.getItemProperty("trans_cust").setValue(s[25].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_cust_date").setValue(s[26] != null ? convertDateFormat(s[26].toString()) : "");
+			item.getItemProperty("trans_cust_lock").setValue(s[27].toString().equals("0") ? false : true);
+			item.getItemProperty("pan").setValue(s[28] != null ? s[28].toString() : "");
+			item.getItemProperty("trans_branch_emp_name").setValue(s[30] != null ? s[30].toString() : "");
+			item.getItemProperty("trans_branch_note").setValue(s[31] != null ? s[31].toString() : "");
+			item.getItemProperty("trans_branch_fw").setValue(s[32] != null ? s[32].toString() : "");
+			item.getItemProperty("id").setValue(s[33] != null ? s[33].toString() : "");
+			item.getItemProperty("trans_mk_check").setValue(s[34].toString().equals("0") ? false : true);
+			item.getItemProperty("rec_mk_check").setValue(s[35].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_branch_check").setValue(s[36].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_emp_check").setValue(s[37].toString().equals("0") ? false : true);
+			item.getItemProperty("trans_cust_check").setValue(s[38].toString().equals("0") ? false : true);
+		});
+	}
+
+	private String convertDateFormat(String sTime) {
+		return timeConverter.convertStrToDateTime(sTime);
+	}
+
+	// private String checkBoxField(int value) {
+	// return value == 1 ? "<input type=\"checkbox\" checked >" : "<input type=\"checkbox\" >";
+	// }
+
+	private void cmdSearch_buttonClick() {
+		initData();
+	}
+
+	// Tao menu chuot phai tren grid
+	private void createContextMenu(AbstractComponent parentComponent) {
+		ContextMenu contextMenu = new ContextMenu(parentComponent, true);
+
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_CHECKER") && (SecurityUtils.hasRole("ROLE_HO") || SecurityUtils.hasRole("ROLE_DONVI")))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem("Kiểm Soát", FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdCheckData_ContextMenu();
+			});
+		}
+
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem("Chuyển File CTY MK", FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("TOMK");
+			});
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem("Nhận Thẻ Từ CTY MK", FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("RECMK");
+			});
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem("Chuyển Thẻ Về Đơn Vị", FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				// cmdUpdateData_ContextMenu("TOBRANCH");
+				cmdShowFormEmpCode_MenuContext("TOBRANCH");
+			});
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem("Giao Thẻ nhân viên", FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdShowFormEmpCode_MenuContext("TOEMP");
+			});
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			contextMenu.addItem("Giao Thẻ Cho Khách Hàng", FontAwesome.CARET_SQUARE_O_RIGHT, e -> {
+				cmdUpdateData_ContextMenu("TOCUST");
+			});
+		}
+	}
+
+	// Xu ly save data hang loat
+	private void cmdLockData_Button() {
+		final Collection<Object> selectedItem = grid.getSelectedRows();
+
+		selectedItem.forEach(s -> {
+			final String id = idxContainer.getItem(s).getItemProperty("id").getValue().toString();
+			final String sCifNo = idxContainer.getItem(s).getItemProperty("cif").getValue().toString();
+			final String sCustName = idxContainer.getItem(s).getItemProperty("cust_name").getValue().toString();
+			final String sCrdType = idxContainer.getItem(s).getItemProperty("crd_brd").getValue().toString();
+			if (!id.equals("")) {
+				final long lid = Long.parseLong(id);
+				crdDetService.lockData(lid);
+				LOGGER.info(SecurityUtils.getUserName() + " - khoa du lieu - cif:" + sCifNo + "|custname:" + sCustName + "|crdtype:" + sCrdType);
+			}
+		});
+		initData();
+		grid.deselectAll();
+
+	}
+
+	// // Xu ly save data hang loat
+	// private void cmdCheckData_Button() {
+	// final Collection<Object> selectedItem = grid.getSelectedRows();
+	// selectedItem.forEach(s -> {
+	// final String id = idxContainer.getItem(s).getItemProperty("id").getValue().toString();
+	// if (!id.equals("")) {
+	// final long lid = Long.parseLong(id);
+	// crdDetService.lockData(lid);
+	// }
+	// });
+	// initData();
+	// grid.deselectAll();
+	// }
+
+	// Cap nhat data co menu chuot phai tren grid
+	private void cmdUpdateData_ContextMenu(String sType) {
+		final Collection<Object> selectedItem = grid.getSelectedRows();
+		selectedItem.forEach(s -> {
+			final String sCifNo = idxContainer.getItem(s).getItemProperty("cif").getValue().toString();
+			final String sCustName = idxContainer.getItem(s).getItemProperty("cust_name").getValue().toString();
+			final String sCrdType = idxContainer.getItem(s).getItemProperty("crd_brd").getValue().toString();
+			final String sPrinSupp = idxContainer.getItem(s).getItemProperty("main_sub").getValue().toString();
+			final String sIssueType = idxContainer.getItem(s).getItemProperty("issue_type").getValue().toString();
+			final String sIssueDate = idxContainer.getItem(s).getItemProperty("issue_date").getValue().toString();
+			final String sPan = idxContainer.getItem(s).getItemProperty("pan").getValue().toString();
+			crdDetService.saveData(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate, sType, "", "", "");
+			LOGGER.info(
+					SecurityUtils.getUserName() + " - thuc hien " + sType + " - cif:" + sCifNo + "|custname:" + sCustName + "|crdtype:" + sCrdType);
+		});
+		initData();
+		grid.deselectAll();
+	}
+
+	// Kiem soat du lieu
+	private void cmdCheckData_ContextMenu() {
+		final Collection<Object> selectedItem = grid.getSelectedRows();
+		selectedItem.forEach(s -> {
+			final String id = idxContainer.getItem(s).getItemProperty("id").getValue().toString();
+			final String cif = idxContainer.getItem(s).getItemProperty("cif").getValue().toString();
+			if (!id.equals("")) {
+				final long lid = Long.parseLong(id);
+				crdDetService.checkData(lid);
+				LOGGER.info(SecurityUtils.getUserName() + " - kiem soat du lieu - cif:" + cif);
+			}
+
+		});
+
+		initData();
+		grid.deselectAll();
+	}
+
+	private void cmdShowEditForm_GridClickListener(ItemClickEvent evt) {
+
+		// Ngay hoan thanh khong duoc lon ngay hien tai
+		final Date maxDate = new Date();
+		final String sCifNo = idxContainer.getItem(evt.getItemId()).getItemProperty("cif").getValue().toString();
+		final String sCustName = idxContainer.getItem(evt.getItemId()).getItemProperty("cust_name").getValue().toString();
+		final String sCrdType = idxContainer.getItem(evt.getItemId()).getItemProperty("crd_brd").getValue().toString();
+		final String sPrinSupp = idxContainer.getItem(evt.getItemId()).getItemProperty("main_sub").getValue().toString();
+		final String sIssueType = idxContainer.getItem(evt.getItemId()).getItemProperty("issue_type").getValue().toString();
+		final String sIssueDate = idxContainer.getItem(evt.getItemId()).getItemProperty("issue_date").getValue().toString();
+		final String sPan = idxContainer.getItem(evt.getItemId()).getItemProperty("pan").getValue().toString();
+		final String sPanMask = idxContainer.getItem(evt.getItemId()).getItemProperty("pan_mask").getValue().toString();
+
+		CwstCrdDetail gciCrdDetail = crdDetService.findOneByIdx(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate);
+
+		// Khoi tao form
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setMargin(true);
+		fieldGroup = new BeanFieldGroup<CwstCrdDetail>(CwstCrdDetail.class);
+
+		fieldGroup.setBuffered(true);
+		// Truong hop chua co du lieu trong database
+		if (gciCrdDetail.getCifNo() == null) {
+			gciCrdDetail = new CwstCrdDetail();
+			gciCrdDetail.setCifNo(sCifNo);
+			gciCrdDetail.setCustName(sCustName);
+			gciCrdDetail.setCrdType(sCrdType);
+			gciCrdDetail.setCrdPrinSupp(sPrinSupp);
+			gciCrdDetail.setIssueType(sIssueType);
+			gciCrdDetail.setIssueDate(sIssueDate);
+			gciCrdDetail.setPan(sPan);
+		} else {
+			fieldGroup.setItemDataSource(gciCrdDetail);
+		}
+		fieldGroup.setItemDataSource(gciCrdDetail);
+		fieldGroup.addCommitHandler(commitHandler_EditForm());
+
+		// FIELD READONLY
+		final TextField tfPanMask = new TextField("Số thẻ");
+		tfPanMask.setValue(sPanMask);
+		tfPanMask.setReadOnly(true);
+		final Field<?> flId = fieldGroup.buildAndBind("id", "id", AbstractTextField.class);
+		flId.setVisible(false);
+		final Field<?> flCifNo = fieldGroup.buildAndBind("Số CIF", "cifNo", AbstractTextField.class);
+		flCifNo.setReadOnly(true);
+		final Field<?> flCustName = fieldGroup.buildAndBind("Tên khách hàng", "custName", AbstractTextField.class);
+		flCustName.setReadOnly(true);
+		final Field<?> flCrdType = fieldGroup.buildAndBind("Loại thẻ", "crdType", AbstractTextField.class);
+		flCrdType.setReadOnly(true);
+		final Field<?> flCrdPrinSupp = fieldGroup.buildAndBind("Chính/phụ", "crdPrinSupp", AbstractTextField.class);
+		flCrdPrinSupp.setReadOnly(true);
+		final Field<?> flIssueDate = fieldGroup.buildAndBind("Ngày phát hành", "issueDate", AbstractTextField.class);
+		flIssueDate.setReadOnly(true);
+		final Field<?> flIssueType = fieldGroup.buildAndBind("Loại phát hành", "issueType", AbstractTextField.class);
+		flIssueType.setReadOnly(true);
+		final Field<?> flPan = fieldGroup.buildAndBind("PAN", "pan", AbstractTextField.class);
+		flPan.setReadOnly(true);
+		flPan.setVisible(false);
+
+		/* --<< CHECKBOX CHUYEN FILE CTY MK --- */
+
+		chbTransMk = fieldGroup.buildAndBind("Chuyển file Cty MK", "transMk", CheckBox.class);
+		chbTransMk.setReadOnly(gciCrdDetail.getTransMkLock());
+
+		dtTransMkDate = new DateField("Ngày hoàn thành");
+		dtTransMkDate.setDateFormat("dd/MM/yyyy");
+		dtTransMkDate.setResolution(Resolution.DAY);
+		dtTransMkDate.setRangeStart(null);
+		dtTransMkDate.setRangeEnd(maxDate);
+
+		/* --------------------------------->>-- */
+
+		/* --<< CHECKBOX NHAN THE TU CTY MK --- */
+
+		chbRecMk = fieldGroup.buildAndBind("Nhận thẻ từ MK", "recMk", CheckBox.class);
+		chbRecMk.setImmediate(true);
+		// Phai khoa chuyen file cho CTY MK thi moi hien thi
+		chbRecMk.setVisible(gciCrdDetail.getTransMkLock());
+		chbRecMk.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransMk.getValue()) {
+						chbRecMk.setValue(false);
+						throw new InvalidValueException("Chuyển file CTY MK chưa thực hiện");
+					}
+				}
+			}
+		});
+		chbRecMk.addValueChangeListener(flRecMkEvent -> {
+			if ((boolean) flRecMkEvent.getProperty().getValue()) {
+				dfRecMkDate.setVisible(true);
+			} else {
+				dfRecMkDate.setVisible(false);
+			}
+		});
+		// Init date field TransRecMkDate
+		dfRecMkDate = new DateField("Ngày hoàn thành");
+		dfRecMkDate.setDateFormat("dd/MM/yyyy");
+		dfRecMkDate.setResolution(Resolution.DAY);
+		dfRecMkDate.setVisible(chbRecMk.getValue());
+		dfRecMkDate.setImmediate(true);
+		dfRecMkDate.setRangeStart(null);
+		dfRecMkDate.setRangeEnd(maxDate);
+		dfRecMkDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (dtTransMkDate.getValue() != null) {
+					if (date.before(dtTransMkDate.getValue())) {
+						throw new InvalidValueException("Ngày nhận thẻ không thể trước ngày chuyển file CTY MK");
+					}
+				}
+			}
+		});
+		/* --------------------------------->>-- */
+
+		/* --<< CHECKBOX CHUYEN THE VE DON VI -- */
+		chbTransBranch = fieldGroup.buildAndBind("Chuyển thẻ về đơn vị", "transBranch", CheckBox.class);
+		chbTransBranch.setVisible(gciCrdDetail.getRecMkLock()); // Neu chua khoa du lieu da nhan the tu CTY MK se an checkbox flTransBranch
+		// Them validate khi chon chuyen the ve don vi
+		chbTransBranch.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbRecMk.getValue()) {
+						chbTransBranch.setValue(false);
+						throw new InvalidValueException("Chưa nhận thẻ từ CTY MK");
+					}
+				}
+			}
+		});
+		// Them su kien neu khong check se an (hide) het cac truong lien quan
+		chbTransBranch.addValueChangeListener(flTransBranchEvent -> {
+			if ((boolean) flTransBranchEvent.getProperty().getValue()) {
+				dfTransBranchDate.setVisible(true);
+				txfTransBranchEmpCode.setVisible(true);
+				txfTransBranchEmpName.setVisible(true);
+				txfTransBranchFwBrch.setVisible(true);
+				txfTransBranchNote.setVisible(true);
+			} else {
+				dfTransBranchDate.setVisible(false);
+				txfTransBranchEmpCode.setVisible(false);
+				txfTransBranchEmpName.setVisible(false);
+			}
+		});
+		// Ma so nhan vien
+		txfTransBranchEmpCode = fieldGroup.buildAndBind("Mã Nhân Viên", "transBranchEmpCode", TextField.class);
+		txfTransBranchEmpCode.setVisible(chbTransBranch.getValue());
+		txfTransBranchEmpCode.setNullRepresentation("");
+		txfTransBranchEmpCode.setNullSettingAllowed(true);
+		txfTransBranchEmpCode.setValidationVisible(false);
+		txfTransBranchEmpCode.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if (value == null) {
+					throw new InvalidValueException("Nhập mã nhân viên");/* Bat buoc nhap ma nhan vien */
+				}
+				if (value.toString().length() > 5) {
+					throw new InvalidValueException("Mã số nhân viên chỉ nhận 5 ký tự");
+				}
+			}
+		});
+		// Ho ten nhan vien
+		txfTransBranchEmpName = fieldGroup.buildAndBind("Tên Nhân Viên", "transBranchEmpName", TextField.class);
+		txfTransBranchEmpName.setVisible(chbTransBranch.getValue());
+		txfTransBranchEmpName.setNullRepresentation("");
+		txfTransBranchEmpName.setNullSettingAllowed(true);
+		txfTransBranchEmpName.setValidationVisible(false);
+		txfTransBranchEmpName.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if (value == null) {
+					throw new InvalidValueException("Nhập tên nhân viên");/* Bat buoc nhap ma nhan vien */
+				}
+			}
+		});
+		// Chuyen tiep don vi
+		txfTransBranchFwBrch = fieldGroup.buildAndBind("Chuyển Tiếp Đơn Vị", "fwBrnCde", TextField.class);
+		txfTransBranchFwBrch.setVisible(chbTransBranch.getValue());
+		txfTransBranchFwBrch.setNullRepresentation("");
+		txfTransBranchFwBrch.setNullSettingAllowed(true);
+		txfTransBranchFwBrch.setValidationVisible(false);
+		// Ghi chu chuyen tiep don vi
+		txfTransBranchNote = fieldGroup.buildAndBind("Ghi Chú", "transBranchNote", TextField.class);
+		txfTransBranchNote.setVisible(chbTransBranch.getValue());
+		txfTransBranchNote.setNullRepresentation("");
+		txfTransBranchNote.setNullSettingAllowed(true);
+		txfTransBranchNote.setValidationVisible(false);
+		txfTransBranchNote.setMaxLength(51);
+		txfTransBranchNote.addValidator(new StringLengthValidator("Tối đa 50 ký tự", 0, 50, true));
+		// Khoi tao truong TransBranchDate
+		dfTransBranchDate = new DateField("Ngày hoàn thành");
+		dfTransBranchDate.setDateFormat("dd/MM/yyyy");
+		dfTransBranchDate.setResolution(Resolution.DAY);
+		dfTransBranchDate.setRangeEnd(maxDate);
+		dfTransBranchDate.setVisible(chbTransBranch.getValue());
+		dfTransBranchDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (dfRecMkDate.getValue() != null) {
+					if (date.before(dfRecMkDate.getValue())) {
+						throw new InvalidValueException("Ngày chuyển thẻ về đơn vị không được trước ngày nhận thẻ từ CTY MK");
+					}
+				}
+			}
+		});
+
+		/* --------------------------------->>-- */
+
+		/* --<< GIAO THE CHO NHAN VIEN --- */
+		txfTransEmpCode = fieldGroup.buildAndBind("Mã Nhân Viên", "transEmpCode", TextField.class);
+		txfTransEmpName = fieldGroup.buildAndBind("Họ tên nhân viên", "transEmpName", TextField.class);
+
+		chbTransEmp = fieldGroup.buildAndBind("Đơn vị giao thẻ cho nhân viên", "transEmp", CheckBox.class);
+		chbTransEmp.setVisible(gciCrdDetail.getTransBranchLock());
+		chbTransEmp.addValueChangeListener(flTransEmpEvent -> {
+			final boolean ischeck = (boolean) chbTransEmp.getValue();
+			txfTransEmpCode.setVisible(ischeck);
+			txfTransEmpName.setVisible(ischeck);
+			dfTransEmpDate.setVisible(ischeck);
+		});
+		chbTransEmp.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransBranch.getValue()) {
+						chbTransEmp.setValue(false);
+						throw new InvalidValueException("Chưa chuyển thẻ về đơn vị");
+					}
+				}
+			}
+		});
+
+		txfTransEmpCode.setValidationVisible(false);
+		txfTransEmpCode.setNullRepresentation("");
+		txfTransEmpCode.setNullSettingAllowed(true);
+		txfTransEmpCode.setVisible(chbTransEmp.getValue());
+		txfTransEmpCode.addValidator(new Validator() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if (value == null) {
+					throw new InvalidValueException("Nhập mã số nhân viên");
+				} else {
+					if (value.toString().length() > 5) {
+						throw new InvalidValueException("Mã số nhân viên chỉ nhận 5 ký tự");
+					}
+				}
+
+			}
+		});
+
+		txfTransEmpName.setNullRepresentation("");
+		txfTransEmpName.setNullSettingAllowed(true);
+		txfTransEmpName.setValidationVisible(false);
+		txfTransEmpName.setVisible(chbTransEmp.getValue());
+		txfTransEmpName.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if (value == null) {
+					throw new InvalidValueException("Nhập họ tên nhân viên");
+				}
+			}
+		});
+
+		// Init date field TransEmpDate
+		dfTransEmpDate = new DateField("Ngày hoàn thành");
+		dfTransEmpDate.setDateFormat("dd/MM/yyyy");
+		dfTransEmpDate.setVisible(chbTransEmp.getValue());
+		dfTransEmpDate.setResolution(Resolution.DAY);
+		dfTransEmpDate.setRangeEnd(maxDate);
+		dfTransEmpDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (date.before(dfTransBranchDate.getValue())) {
+					throw new InvalidValueException("Ngày chuyển nhân viên không được trước ngày chuyển thẻ cho đơn vị");
+				}
+			}
+		});
+		/* --------------------------------->>-- */
+
+		/* --<< GIAO THE CHO KHACH HANG --- */
+		chbTransCust = fieldGroup.buildAndBind("Giao thẻ khách hàng", "transCust", CheckBox.class);
+		chbTransCust.setVisible(gciCrdDetail.getTransEmpLock());
+		chbTransCust.addValueChangeListener(flTransCustEvent -> {
+			dfTransCustDate.setVisible((boolean) flTransCustEvent.getProperty().getValue());
+		});
+		chbTransCust.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				if ((boolean) value) {
+					if (!(boolean) chbTransEmp.getValue()) {
+						chbTransCust.setValue(false);
+						throw new InvalidValueException("Chưa chuyển thẻ cho nhân viên");
+					}
+				}
+			}
+		});
+		// Init date field TransEmpDate
+		dfTransCustDate = new DateField("Ngày hoàn thành");
+		dfTransCustDate.setDateFormat("dd/MM/yyyy");
+		dfTransCustDate.setResolution(Resolution.DAY);
+		dfTransCustDate.setRangeEnd(maxDate);
+		dfTransCustDate.setVisible(chbTransCust.getValue());
+		dfTransCustDate.addValidator(new Validator() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void validate(Object value) throws InvalidValueException {
+				Date date = (Date) value;
+				if (date.before(dfTransEmpDate.getValue())) {
+					throw new InvalidValueException("Ngày giao thẻ cho khách hàng không được trước ngày giao thẻ cho nhân viên");
+				}
+			}
+		});
+		/* --------------------------------->>-- */
+		try {
+			if (gciCrdDetail.getTransMkDate() == null) {
+				dtTransMkDate.setValue(new Date());
+			} else {
+				dtTransMkDate.setValue(dateFormat.parse(gciCrdDetail.getTransMkDate()));
+			}
+			if (gciCrdDetail.getRecMkDate() == null) {
+				dfRecMkDate.setValue(new Date());
+			} else {
+				dfRecMkDate.setValue(dateFormat.parse(gciCrdDetail.getRecMkDate()));
+			}
+			if (gciCrdDetail.getTransCustDate() == null) {
+				dfTransCustDate.setValue(new Date());
+			} else {
+				dfTransCustDate.setValue(dateFormat.parse(gciCrdDetail.getTransCustDate()));
+			}
+			if (gciCrdDetail.getTransEmpDate() == null) {
+				dfTransEmpDate.setValue(new Date());
+			} else {
+				dfTransEmpDate.setValue(dateFormat.parse(gciCrdDetail.getTransEmpDate()));
+			}
+			if (gciCrdDetail.getTransBranchDate() == null) {
+				dfTransBranchDate.setValue(new Date());
+			} else {
+				dfTransBranchDate.setValue(dateFormat.parse(gciCrdDetail.getTransBranchDate()));
+			}
+		} catch (ReadOnlyException | ConversionException | ParseException e1) {
+			LOGGER.error(e1.getMessage());
+		}
+
+		// Khong cho dieu chinh giao the cho CT MKneu da bi khoa
+		final boolean isTransMk = gciCrdDetail.getTransMkLock();
+		chbTransMk.setReadOnly(isTransMk);
+		dtTransMkDate.setReadOnly(isTransMk);
+		// Khong cho dieu chinh nhan the tu MK neu da bi khoa
+		final boolean isRecMk = gciCrdDetail.getRecMkLock();
+		chbRecMk.setReadOnly(isRecMk);
+		dfRecMkDate.setReadOnly(isRecMk);
+		// Khong cho dieu chinh giao the cho don vi neu da bi khoa
+		final boolean isTransBranch = gciCrdDetail.getTransBranchLock();
+		chbTransBranch.setReadOnly(isTransBranch);
+		dfTransBranchDate.setReadOnly(isTransBranch);
+		txfTransBranchEmpCode.setReadOnly(isTransBranch);
+		txfTransBranchEmpName.setReadOnly(isTransBranch);
+		txfTransBranchFwBrch.setReadOnly(isTransBranch);
+		txfTransBranchNote.setReadOnly(isTransBranch);
+		// Khong cho dieu chinh giao the cho nhan vien neu da bi khoa
+		final boolean isTransEmp = gciCrdDetail.getTransEmpLock();
+		chbTransEmp.setReadOnly(isTransEmp);
+		dfTransEmpDate.setReadOnly(isTransEmp);
+		txfTransEmpCode.setReadOnly(isTransEmp);
+		txfTransEmpName.setReadOnly(isTransEmp);
+
+		// Khong cho dieu chinh giao the cho KH neu da bi khoa
+		chbTransCust.setReadOnly(gciCrdDetail.getTransCustLock());
+		dfTransCustDate.setReadOnly(gciCrdDetail.getTransCustLock());
+
+		// BUTTON SAVE
+		final Button btSave = new Button("Cập nhật");
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.setClickShortcut(KeyCode.ENTER);
+		btSave.addClickListener(btSaveEvt -> {
+			cmdButtonSave();
+		});
+
+		if (gciCrdDetail.getRecMkLock() && gciCrdDetail.getRecMkLock() && gciCrdDetail.getTransBranchLock() && gciCrdDetail.getTransEmpLock()
+				&& gciCrdDetail.getTransCustLock()) {
+			btSave.setVisible(false);
+		}
+
+		formLayout.addComponent(flId);
+		formLayout.addComponent(flCifNo);
+		formLayout.addComponent(flCustName);
+		formLayout.addComponent(tfPanMask);
+		formLayout.addComponent(flCrdType);
+		formLayout.addComponent(flCrdPrinSupp);
+		formLayout.addComponent(flIssueDate);
+		formLayout.addComponent(flIssueType);
+
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransMk);
+			formLayout.addComponent(dtTransMkDate);
+			formLayout.addComponent(chbRecMk);
+			formLayout.addComponent(dfRecMkDate);
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_HO"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransBranch);
+			formLayout.addComponent(dfTransBranchDate);
+			formLayout.addComponent(txfTransBranchEmpCode);
+			formLayout.addComponent(txfTransBranchEmpName);
+			formLayout.addComponent(txfTransBranchFwBrch);
+			formLayout.addComponent(txfTransBranchNote);
+		}
+		if ((SecurityUtils.hasRole("ROLE_CARDDRAFTWORKFLOWVIEW_EDIT") && SecurityUtils.hasRole("ROLE_DONVI"))
+				|| SecurityUtils.hasRole("ROLE_SUPERADMIN")) {
+			formLayout.addComponent(chbTransEmp);
+			formLayout.addComponent(dfTransEmpDate);
+			formLayout.addComponent(txfTransEmpCode);
+			formLayout.addComponent(txfTransEmpName);
+			formLayout.addComponent(chbTransCust);
+			formLayout.addComponent(dfTransCustDate);
+		}
+		formLayout.addComponent(btSave);
+		// init Window
+		final Window window = new Window("Điều Chỉnh Thông Tin");
+		window.center();
+		window.setModal(true);
+		window.setContent(formLayout);
+		window.setWidth(40f, Unit.PERCENTAGE);
+		window.setHeight(90f, Unit.PERCENTAGE);
+		window.addCloseListener(closeEvent -> {
+			getUI().removeWindow(window);
+		});
+		getUI().getWindows().forEach(s -> {
+			getUI().removeWindow(s);
+		});
+		getUI().addWindow(window);
+	}
+
+	// private boolean cmdCheckLock_Grid(String sPropertyId, Object itemid) {
+	// if (hmapType.get(sPropertyId) == "TOMK") {
+	// return (boolean) container.getItem(itemid).getItemProperty("trans_mk_lock").getValue();
+	// }
+	// if (hmapType.get(sPropertyId) == "RECMK") {
+	// return (boolean) container.getItem(itemid).getItemProperty("rec_mk_lock").getValue();
+	// }
+	// if (hmapType.get(sPropertyId) == "TOBRANCH") {
+	// return (boolean) container.getItem(itemid).getItemProperty("trans_branch_lock").getValue();
+	// }
+	// if (hmapType.get(sPropertyId) == "TOEMP") {
+	// return (boolean) container.getItem(itemid).getItemProperty("trans_emp_lock").getValue();
+	// }
+	// if (hmapType.get(sPropertyId) == "TOCUST") {
+	// return (boolean) container.getItem(itemid).getItemProperty("trans_cust_lock").getValue();
+	// }
+	// return false;
+	// }
+
+	private void cmdShowFormEmpCode_MenuContext(String type) {
+		final Window window = new Window();
+		window.setWidth(28f, Unit.PERCENTAGE);
+		window.center();
+		window.setModal(true);
+
+		window.addCloseListener(evt -> {
+			getUI().removeWindow(window);
+		});
+		final FormLayout formLayout = new FormLayout();
+		formLayout.setSpacing(true);
+		formLayout.setMargin(true);
+		final TextField tfEmpCode = new TextField("Mã Nhân Viên");
+		tfEmpCode.setMaxLength(5);
+		tfEmpCode.addValidator(new StringLengthValidator("Nhập Thông Tin Mã Nhân Viên", 1, 5, false));
+		tfEmpCode.setValidationVisible(false);
+
+		final TextField tfEmpName = new TextField("Họ Tên Nhân Viên");
+		tfEmpName.setMaxLength(50);
+		tfEmpName.setNullRepresentation("");
+		tfEmpName.addValidator(new StringLengthValidator("Nhập Tên Nhân Viên", 1, 50, false));
+		tfEmpName.setValidationVisible(false);
+
+		final TextField tfFwBrch = new TextField("Chuyển Tiếp Đơn Vị");
+		tfFwBrch.setMaxLength(50);
+		tfFwBrch.setNullRepresentation("");
+		tfFwBrch.setMaxLength(3);
+		tfFwBrch.addValidator(new StringLengthValidator("Mã đơn vị tối đa ba ký tự", 0, 3, true));
+
+		final Button btSave = new Button("Đồng ý");
+		btSave.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btSave.setIcon(FontAwesome.SAVE);
+		btSave.setClickShortcut(KeyCode.ENTER);
+		btSave.addClickListener(evt -> {
+			try {
+				tfEmpCode.validate();
+				tfEmpName.validate();
+				// truong hop them du lieu cho chuyen the ve don vi moi kiem tra chuyen tiep don vi
+				if (type.equals("TOBRANCH")) {
+					tfFwBrch.validate();
+				}
+
+				final Collection<Object> selectedItem = grid.getSelectedRows();
+				idxContainer.getItemIds();
+				selectedItem.forEach(s -> {
+					final String sCifNo = idxContainer.getItem(s).getItemProperty("cif").getValue().toString();
+					final String sCustName = idxContainer.getItem(s).getItemProperty("cust_name").getValue().toString();
+					final String sCrdType = idxContainer.getItem(s).getItemProperty("crd_brd").getValue().toString();
+					final String sPrinSupp = idxContainer.getItem(s).getItemProperty("main_sub").getValue().toString();
+					final String sIssueType = idxContainer.getItem(s).getItemProperty("issue_type").getValue().toString();
+					final String sIssueDate = idxContainer.getItem(s).getItemProperty("issue_date").getValue().toString();
+					final String sPan = idxContainer.getItem(s).getItemProperty("pan").getValue().toString();
+					crdDetService.saveData(sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate, type,
+							tfEmpCode.getValue().toString(), tfEmpName.getValue(), tfFwBrch.getValue());
+					LOGGER.info(SecurityUtils.getUserName() + " - thuc hien " + type + " - cif:" + sCifNo + "|custname:" + sCustName + "|crdtype:"
+							+ sCrdType + "|empcode:" + tfEmpCode.getValue() + "|empname:" + tfEmpName.getValue() + "|fwbranch:"
+							+ tfFwBrch.getValue());
+
+				});
+				initData();
+				grid.deselectAll();
+
+			} catch (InvalidValueException ex) {
+				tfEmpCode.setValidationVisible(true);
+				tfEmpName.setValidationVisible(true);
+
+			}
+		});
+		formLayout.addComponent(tfEmpCode);
+		formLayout.addComponent(tfEmpName);
+		if (type.equals("TOBRANCH")) {
+			formLayout.addComponent(tfFwBrch);
+		}
+		formLayout.addComponent(btSave);
+
+		window.setContent(formLayout);
+		getUI().addWindow(window);
+	}
+
+	private CommitHandler commitHandler_EditForm() {
+		return new CommitHandler() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void preCommit(CommitEvent commitEvent) throws CommitException {
+			}
+
+			@Override
+			public void postCommit(CommitEvent commitEvent) throws CommitException {
+				final long lid = Long.parseLong(String.valueOf(commitEvent.getFieldBinder().getField("id").getValue()));
+
+				final String sCifNo = String.valueOf(commitEvent.getFieldBinder().getField("cifNo").getValue());
+				final String sCustName = String.valueOf(commitEvent.getFieldBinder().getField("custName").getValue());
+				final String sCrdType = String.valueOf(commitEvent.getFieldBinder().getField("crdType").getValue());
+				final String sPrinSupp = String.valueOf(commitEvent.getFieldBinder().getField("crdPrinSupp").getValue());
+				final String sIssueType = String.valueOf(commitEvent.getFieldBinder().getField("issueType").getValue());
+				final String sIssueDate = String.valueOf(commitEvent.getFieldBinder().getField("issueDate").getValue());
+				final String sPan = String.valueOf(commitEvent.getFieldBinder().getField("pan").getValue());
+				final String sTransBranchEmpCode = String.valueOf(commitEvent.getFieldBinder().getField("transBranchEmpCode").getValue());
+				final String sTransBranchEmpName = String.valueOf(commitEvent.getFieldBinder().getField("transBranchEmpName").getValue());
+				final String sTransBranchFwCde = String.valueOf(commitEvent.getFieldBinder().getField("fwBrnCde").getValue());
+				final String sTransBranchNote = String.valueOf(commitEvent.getFieldBinder().getField("transBranchNote").getValue());
+				final String sTransEmpCode = String.valueOf(commitEvent.getFieldBinder().getField("transEmpCode").getValue());
+				final String sTransEmpName = String.valueOf(commitEvent.getFieldBinder().getField("transEmpName").getValue());
+				// True/False
+				final boolean sTransMk = (Boolean) commitEvent.getFieldBinder().getField("transMk").getValue();
+				final boolean sRecMk = (Boolean) commitEvent.getFieldBinder().getField("recMk").getValue();
+				final boolean sTransBranch = (Boolean) commitEvent.getFieldBinder().getField("transBranch").getValue();
+				final boolean sTransEmp = (Boolean) commitEvent.getFieldBinder().getField("transEmp").getValue();
+				final boolean sTransCust = (Boolean) commitEvent.getFieldBinder().getField("transCust").getValue();
+
+				final String sTransMkDate = sTransMk == false ? "" : dateFormat.format(dtTransMkDate.getValue());
+				final String sRecMkDate = sRecMk == false ? "" : dateFormat.format(dfRecMkDate.getValue());
+				final String sTransBranchDate = sTransBranch == false ? "" : dateFormat.format(dfTransBranchDate.getValue());
+				final String sTransEmpDate = sTransEmp == false ? "" : dateFormat.format(dfTransEmpDate.getValue());
+				final String sTransCustDate = sTransCust == false ? "" : dateFormat.format(dfTransCustDate.getValue());
+
+				crdDetService.saveData(lid, sCifNo, sCustName, sPan, sCrdType, sPrinSupp, sIssueType, sIssueDate, sTransMk, sTransMkDate, sRecMk,
+						sRecMkDate, sTransBranch, sTransBranchDate, sTransBranchEmpCode, sTransEmp, sTransEmpCode, sTransEmpName, sTransEmpDate,
+						sTransCust, sTransCustDate, sTransBranchEmpName, sTransBranchFwCde, sTransBranchNote);
+				LOGGER.info(SecurityUtils.getUserName() + " - Luu du lieu tu form - cif:" + sCifNo + " |custname: " + sCustName + "|crdtype: "
+						+ sCrdType + "|empname:" + sTransBranchEmpName + "|empcode:" + sTransBranchEmpCode + "|fwbranch:" + sTransBranchFwCde);
+				// Refresh grid
+				getUI().access(new Runnable() {
+					@Override
+					public void run() {
+						idxContainer.removeAllItems();
+						initData();
+					}
+				});
+			}
+
+		};
+	}
+
+	// Tao du lieu xuat cho file Excel
+	@SuppressWarnings("unchecked")
+	private Table initDataExport() {
+		Table table = new Table();
+		table.addContainerProperty("STT", String.class, "");
+		table.addContainerProperty("CIF", String.class, "");
+		table.addContainerProperty("Loai_The", String.class, "");
+		table.addContainerProperty("Ten_Chu_The", String.class, "");
+		table.addContainerProperty("Chinh_Phu", String.class, "");
+		table.addContainerProperty("So_The", String.class, "");
+		table.addContainerProperty("Loai_Phat_Hanh", String.class, "");
+		table.addContainerProperty("Ngay_Phat_Hanh", String.class, "");
+		table.addContainerProperty("Ma_Don_Vi", String.class, "");
+		// Chuyen file den MK
+		// table.addContainerProperty("trans_mk", String.class, "");
+		table.addContainerProperty("Chuyen_File_Den_CTYMK", String.class, "");
+		table.addContainerProperty("Ngay_Chuyen_CTYMK", String.class, "");
+		// table.addContainerProperty("rec_mk", String.class, "");
+		table.addContainerProperty("Nhan_The_CTYMK", String.class, "");
+		table.addContainerProperty("Ngay_Nhan_CTYMK", String.class, "");
+		// Chuyen the ve don vi
+		// table.addContainerProperty("trans_branch", String.class, "");
+		table.addContainerProperty("Don_Vi_Nhan_The", String.class, "");
+		table.addContainerProperty("MSNV_Nhan", String.class, "");
+		table.addContainerProperty("Ngay_Don_Vi_Nhan", String.class, "");
+		// Giao the cho nhan vien
+		// table.addContainerProperty("trans_emp", String.class, "");
+		table.addContainerProperty("Giao_The_Cho_NV", String.class, "");
+		table.addContainerProperty("MSNV_Nhan", String.class, "");
+		table.addContainerProperty("Ho_Ten", String.class, "");
+		table.addContainerProperty("Ngay_Giao_The", String.class, "");
+		// Giao the cho KH
+		// table.addContainerProperty("trans_cust", String.class, "");
+		table.addContainerProperty("Giao_The_KH", String.class, "");
+		table.addContainerProperty("Ngay_Giao_The_KH", String.class, "");
+
+		idxContainer.getItemIds().forEach(s -> {
+			final Item itemid = table.getItem(table.addItem());
+			final String sstt = String.valueOf(idxContainer.getContainerProperty(s, "stt").getValue());
+			final String scif = String.valueOf(idxContainer.getContainerProperty(s, "cif").getValue());
+			final String scrd_brd = String.valueOf(idxContainer.getContainerProperty(s, "crd_brd").getValue());
+			final String scust_name = String.valueOf(idxContainer.getContainerProperty(s, "cust_name").getValue());
+			final String smain_sub = String.valueOf(idxContainer.getContainerProperty(s, "main_sub").getValue());
+			final String span_mask = String.valueOf(idxContainer.getContainerProperty(s, "pan_mask").getValue());
+			final String sissue_type = String.valueOf(idxContainer.getContainerProperty(s, "issue_type").getValue());
+			final String sissue_date = String.valueOf(idxContainer.getContainerProperty(s, "issue_date").getValue());
+			final String sbrch_code = String.valueOf(idxContainer.getContainerProperty(s, "brch_code").getValue());
+			final boolean btrans_mk_lock = (boolean) idxContainer.getContainerProperty(s, "trans_mk_lock").getValue();
+			final String strans_mk_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_mk_date").getValue());
+			final boolean brec_mk_lock = (boolean) idxContainer.getContainerProperty(s, "rec_mk_lock").getValue();
+			final String srec_mk_date = String.valueOf(idxContainer.getContainerProperty(s, "rec_mk_date").getValue());
+			final boolean btrans_branch_lock = (boolean) idxContainer.getContainerProperty(s, "trans_branch_lock").getValue();
+			final String strans_branch_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_branch_date").getValue());
+			final String strans_branch_emp_code = String.valueOf(idxContainer.getContainerProperty(s, "trans_branch_emp_code").getValue());
+			final boolean strans_emp_lock = (boolean) idxContainer.getContainerProperty(s, "trans_emp_lock").getValue();
+			final String strans_emp_code = String.valueOf(idxContainer.getContainerProperty(s, "trans_emp_code").getValue());
+			final String strans_emp_name = String.valueOf(idxContainer.getContainerProperty(s, "trans_emp_name").getValue());
+			final String strans_emp_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_emp_date").getValue());
+			final boolean btrans_cust_lock = (boolean) idxContainer.getContainerProperty(s, "trans_cust_lock").getValue();
+			final String strans_cust_date = String.valueOf(idxContainer.getContainerProperty(s, "trans_cust_date").getValue());
+
+			itemid.getItemProperty("STT").setValue(sstt);
+			itemid.getItemProperty("CIF").setValue(scif);
+			itemid.getItemProperty("Loai_The").setValue(scrd_brd);
+			itemid.getItemProperty("Ten_Chu_The").setValue(scust_name);
+			itemid.getItemProperty("Chinh_Phu").setValue(smain_sub);
+			itemid.getItemProperty("So_The").setValue(span_mask);
+			itemid.getItemProperty("Loai_Phat_Hanh").setValue(sissue_type);
+			itemid.getItemProperty("Ngay_Phat_Hanh").setValue(timeConverter.convertStrToDateTime(sissue_date));
+			itemid.getItemProperty("Ma_Don_Vi").setValue(sbrch_code);
+			// Chuyen file den cong ty MK
+			if (btrans_mk_lock) {
+				itemid.getItemProperty("Chuyen_File_Den_CTYMK").setValue(TRANSFERED);
+				itemid.getItemProperty("Ngay_Chuyen_CTYMK").setValue(strans_mk_date);
+			} else {
+				itemid.getItemProperty("Chuyen_File_Den_CTYMK").setValue("");
+			}
+
+			// Nhan the tu cong ty MK
+			if (brec_mk_lock) {
+				itemid.getItemProperty("Nhan_The_CTYMK").setValue(RECEIVED);
+				itemid.getItemProperty("Ngay_Nhan_CTYMK").setValue(srec_mk_date);
+			} else {
+				itemid.getItemProperty("Nhan_The_CTYMK").setValue("");
+			}
+
+			// Don vi den nhan the
+			if (btrans_branch_lock) {
+				itemid.getItemProperty("Don_Vi_Nhan_The").setValue(RECEIVED);
+				itemid.getItemProperty("Ngay_Don_Vi_Nhan").setValue(strans_branch_date);
+				itemid.getItemProperty("MSNV_Nhan").setValue(strans_branch_emp_code);
+			} else {
+				itemid.getItemProperty("Don_Vi_Nhan_The").setValue("");
+			}
+			// Giao the cho nhan vien
+			if (strans_emp_lock) {
+				itemid.getItemProperty("Giao_The_Cho_NV").setValue(RECEIVED);
+				itemid.getItemProperty("MSNV_Nhan").setValue(strans_emp_code);
+				itemid.getItemProperty("Ho_Ten").setValue(strans_emp_name);
+				itemid.getItemProperty("Ngay_Giao_The").setValue(strans_emp_date);
+			} else {
+				itemid.getItemProperty("Giao_The_Cho_NV").setValue("");
+			}
+
+			// Giao the cho khach hang
+			if (btrans_cust_lock) {
+				itemid.getItemProperty("Giao_The_KH").setValue(RECEIVED);
+				itemid.getItemProperty("Ngay_Giao_The_KH").setValue(strans_cust_date);
+			} else {
+				itemid.getItemProperty("Giao_The_KH").setValue("");
+			}
+
+		});
+		return table;
+
+	}
+
+	private void cmdButtonSave() {
+		try {
+			// Kiem tra cac truong da thoa dieu kien chua
+			chbTransMk.validate();
+
+			// Co check nhan the tu CTY MK se kiem tra truong nhap ngay nhan the
+			if (chbRecMk.getValue()) {
+				dfRecMkDate.validate();
+			}
+			// Co check giao the cho don vi se kiem tra truong nhap ngay nhan the
+			if (chbTransBranch.getValue()) {
+				dfTransBranchDate.validate();
+				txfTransBranchEmpCode.validate();
+				txfTransBranchEmpName.validate();
+				txfTransBranchNote.validate();
+			} else {
+				txfTransBranchEmpCode.removeAllValidators();
+				txfTransBranchEmpName.removeAllValidators();
+				txfTransBranchNote.removeAllValidators();
+			}
+
+			if (chbTransEmp.getValue()) {
+				dfTransEmpDate.validate();
+				txfTransEmpCode.validate();
+				txfTransEmpName.validate();
+			} else {
+				txfTransEmpCode.removeAllValidators();
+				txfTransEmpName.removeAllValidators();
+			}
+
+			if (chbTransCust.getValue()) {
+				dfTransCustDate.validate();
+			} else {
+				dfTransCustDate.removeAllValidators();
+			}
+
+			// Tien hanh cap nhat du lieu
+			fieldGroup.commit();
+
+			Notification.show("Đã cập nhật", Type.HUMANIZED_MESSAGE);
+			// Dong cua so
+			getUI().getWindows().forEach(s -> {
+				getUI().removeWindow(s);
+			});
+			grid.deselectAll();
+		} catch (InvalidValueException e) {
+			txfTransBranchEmpCode.setValidationVisible(true);
+			txfTransBranchEmpName.setValidationVisible(true);
+			txfTransEmpCode.setValidationVisible(true);
+			txfTransEmpName.setValidationVisible(true);
+
+		} catch (CommitException e) {
+			Notification.show("Cập nhật không thành công", Type.ERROR_MESSAGE);
+			LOGGER.error(e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+}

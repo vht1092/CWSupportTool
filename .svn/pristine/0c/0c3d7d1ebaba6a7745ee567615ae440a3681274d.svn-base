@@ -1,0 +1,10 @@
+package cwst.com.services;
+
+import java.util.List;
+
+import cwst.com.entities.CwstSysUsrBranch;
+
+public interface SysUsrBranchService {
+
+	List<CwstSysUsrBranch> findAllByUsername(String usrname);
+}

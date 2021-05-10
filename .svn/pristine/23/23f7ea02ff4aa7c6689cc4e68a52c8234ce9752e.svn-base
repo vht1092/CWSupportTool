@@ -1,0 +1,158 @@
+package cwst.com.views;
+
+import javax.annotation.PostConstruct;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import com.vaadin.data.Validator.InvalidValueException;
+import com.vaadin.data.validator.StringLengthValidator;
+import com.vaadin.event.ShortcutAction;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.FontAwesome;
+import com.vaadin.server.Page;
+import com.vaadin.server.VaadinService;
+import com.vaadin.shared.ui.label.ContentMode;
+import com.vaadin.spring.annotation.SpringView;
+import com.vaadin.ui.Alignment;
+import com.vaadin.ui.Button;
+import com.vaadin.ui.Label;
+import com.vaadin.ui.Notification;
+import com.vaadin.ui.Notification.Type;
+import com.vaadin.ui.Panel;
+import com.vaadin.ui.PasswordField;
+import com.vaadin.ui.TextField;
+import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.themes.ValoTheme;
+
+import cwst.com.CwSupportToolUI;
+import cwst.com.SecurityUtils;
+
+@SpringView(name = LoginView.VIEW_NAME, ui = CwSupportToolUI.class)
+public class LoginView extends VerticalLayout implements View {
+
+	private static final long serialVersionUID = 6866257742568730367L;
+	public static final String VIEW_NAME = "";
+	private static final Logger LOGGER = LoggerFactory.getLogger(LoginView.class);
+	@Autowired
+	private AuthenticationManager authentionManager;
+	private TextField txtfUserName;
+	private PasswordField pfPassword;
+
+	@PostConstruct
+	void init() {
+		// setHeight(UI.getCurrent().getPage().getBrowserWindowWidth()-400,Unit.PIXELS);
+		setSpacing(true);
+		Page.getCurrent().setTitle("Đăng nhập");
+		final Panel panelLogin = new Panel();
+		panelLogin.setCaption("Đăng nhập");
+		panelLogin.setStyleName(ValoTheme.PANEL_WELL);
+		panelLogin.setWidth(null);
+		final VerticalLayout contentLayout = new VerticalLayout();
+		contentLayout.setMargin(true);
+		contentLayout.setSpacing(true);
+
+		txtfUserName = new TextField("Tên đăng nhập (không bao gồm @scb.com.vn)");
+		txtfUserName.setIcon(FontAwesome.USER);
+		txtfUserName.setWidth("400px");
+
+		txtfUserName.addValidator(new StringLengthValidator("Vui lòng nhập tên đăng nhập", 1, 20, false));
+		txtfUserName.setValidationVisible(false);
+		contentLayout.addComponent(txtfUserName);
+
+		pfPassword = new PasswordField("Mật khẩu");
+		pfPassword.setWidth("400px");
+		pfPassword.setIcon(FontAwesome.LOCK);
+		pfPassword.addValidator(new StringLengthValidator("Vui lòng nhập mật khẩu", 3, 50, false));
+		pfPassword.setValidationVisible(false);
+		contentLayout.addComponent(pfPassword);
+
+		final Button btLogin = new Button("Đăng nhập", evt -> {
+			txtfUserName.setValidationVisible(false);
+			pfPassword.setValidationVisible(false);
+			try {
+				txtfUserName.validate();
+				pfPassword.validate();
+			} catch (InvalidValueException e) {
+				txtfUserName.setValidationVisible(true);
+				pfPassword.setValidationVisible(true);
+			}
+
+		});
+		btLogin.setStyleName(ValoTheme.BUTTON_PRIMARY);
+		btLogin.setIcon(FontAwesome.SIGN_IN);
+		btLogin.setClickShortcut(ShortcutAction.KeyCode.ENTER);
+		btLogin.addClickListener(event -> cmdLoginButtonClick(event));
+		contentLayout.addComponent(btLogin);
+
+		panelLogin.setContent(contentLayout);
+
+		final Label lbHeader = new Label("<div style=\"background-color: #0072c6; padding:20px;text-align:center\">"
+				+ " <span style=\"font-size:24px; color:#ffffff;font-weight: bold;text-transform: uppercase;\">HỆ THỐNG THẺ MỞ RỘNG</span></div>");
+		lbHeader.setContentMode(ContentMode.HTML);
+
+		final Label lbFooter = new Label("" + "Ứng dụng dùng tốt trên <img src='/VAADIN/themes/mytheme/img/rsz_mozilla-firefox-icon.png'></img>"
+				+ "<img src='/VAADIN/themes/mytheme/img/rsz_internet-chrome-icon.png'></img><br/>Bản quyền © 2016 Ngân Hàng TMCP SCB"
+
+		);
+		lbFooter.setCaptionAsHtml(true);
+		lbFooter.setContentMode(ContentMode.HTML);
+		lbFooter.setHeight("100px");
+		lbFooter.setStyleName(ValoTheme.TEXTFIELD_ALIGN_CENTER);
+
+		addComponent(lbHeader);
+		setComponentAlignment(lbHeader, Alignment.TOP_CENTER);
+		setExpandRatio(lbHeader, 1f);
+		addComponent(panelLogin);
+		setComponentAlignment(panelLogin, Alignment.MIDDLE_CENTER);
+		setExpandRatio(panelLogin, 0.5f);
+		addComponent(lbFooter);
+		setComponentAlignment(lbFooter, Alignment.BOTTOM_CENTER);
+		setExpandRatio(lbFooter, 2f);
+	}
+
+	@Override
+	public void enter(final ViewChangeEvent event) {
+
+	}
+
+	private String getUsername() {
+		return txtfUserName.getValue();
+	}
+
+	private String getPassword() {
+		return pfPassword.getValue();
+	}
+
+	private void cmdLoginButtonClick(Button.ClickEvent event) {
+		try {
+			txtfUserName.validate();
+			pfPassword.validate();
+			Authentication token = authentionManager.authenticate(new UsernamePasswordAuthenticationToken(getUsername(), getPassword()));
+			VaadinService.reinitializeSession(VaadinService.getCurrentRequest());
+			SecurityContextHolder.getContext().setAuthentication(token);
+			LOGGER.info(getUsername() + " login successful");
+			if (SecurityUtils.hasRole("ROLE_CARDDISTRIBUTIONVIEW_VIEW")) {
+				getUI().getNavigator().navigateTo(CardDistributionView.VIEW_NAME);
+			} else {
+				getUI().getNavigator().navigateTo(CardWorkSupportToolView.VIEW_NAME);
+			}
+		} catch (InvalidValueException e) {
+			txtfUserName.setValidationVisible(true);
+			pfPassword.setValidationVisible(true);
+		} catch (NullPointerException ex) {
+			LOGGER.error(getUsername() + " login - " + ex.getMessage());
+			Notification.show("Không có quyền truy cập ứng dụng", Type.ERROR_MESSAGE);
+		} catch (Exception ex) {
+			LOGGER.error(getUsername() + " login - " + ex.getMessage());
+			Notification.show("Đăng nhập không thành công", Type.ERROR_MESSAGE);
+		}
+	}
+
+}

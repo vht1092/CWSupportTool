@@ -1,0 +1,37 @@
+package cwst.com.services;
+
+import java.util.List;
+
+import cwst.com.entities.CwstCrdDetail;
+
+public interface CrdDetailService {
+
+	List<Object[]> findAll(String fromDate, String toDate, String branchCode, String crdtype, String username, String cif);
+
+	CwstCrdDetail findOneById(long id);
+
+	void saveDataFromFormContextMenu(String cifno, String custname, String pan, String crdtype, String crdprinsupp, String issueType,
+			String issuedate, String type, String brchcode, String empCode, String empName, String brnchCode, String note);
+
+	void saveDataFromForm(String cifno, String custname, String pan, String crdtype, String crdprinsupp, String issueType, String issuedate,
+			boolean tranmk, String tranmkdate, boolean recmk, String recmkdate, boolean transbranch, String transbranchdate,
+			String transbranchempcode, boolean stransemp, String transempcode, String transEmpname, String transEmpDate, boolean transcust,
+			String trancustdate, String transbranchempname, String transbranchfwcde, String transbranchnote, boolean transbranchrec,
+			String transbranchrecdate, String transempnote);
+
+	void updateDate(long id, String cifno, String custname, String pan, String crdtype, String crdprinsupp, String issueType, String issuedate,
+			String date, String type);
+
+	void lockData(long id);
+
+	void checkData(long id);
+
+	void update(CwstCrdDetail cwstCrdDetail);
+
+	CwstCrdDetail findOneByIdx(final String cifno, final String custname, final String pan, final String crdtype, final String prinsupp,
+			final String issuetype, final String issuedate);
+
+	public List<Object[]> findToSendMailDistributingCard();
+	
+	public String findWorkingDate();
+}

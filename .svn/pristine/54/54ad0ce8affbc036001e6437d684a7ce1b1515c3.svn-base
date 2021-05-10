@@ -1,0 +1,70 @@
+[INFO ] 2017-04-19 11:49:15.425 [http-nio-8080-exec-8] LoginView - linhntd1 login successful
+[INFO ] 2017-04-19 11:53:38.098 [http-nio-8080-exec-9] LoginView - linhntd1 login successful
+[INFO ] 2017-04-19 11:55:51.173 [http-nio-8080-exec-10] LoginView - linhntd1 login successful
+[INFO ] 2017-04-19 13:09:06.907 [http-nio-8080-exec-6] LoginView - linhntd1 login successful
+[INFO ] 2017-04-19 13:09:53.864 [http-nio-8080-exec-9] LoginView - linhntd1 login successful
+[INFO ] 2017-04-19 14:16:05.856 [http-nio-8080-exec-7] LoginView - linhntd1 login successful
+[INFO ] 2017-04-20 09:35:17.282 [http-nio-8080-exec-3] LoginView - linhntd1 login successful
+[INFO ] 2017-04-20 09:36:24.889 [http-nio-8080-exec-9] LoginView - linhntd1 login successful
+[INFO ] 2017-04-20 13:55:41.453 [http-nio-8080-exec-7] LoginView - ho login successful
+[INFO ] 2017-04-20 14:12:53.840 [http-nio-8080-exec-7] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:test2|Họ Tên:ewa|Mô Tả:ewae|Khóa:false|Loại Người Dùng:nullewqe|
+[INFO ] 2017-04-20 14:27:22.635 [http-nio-8080-exec-1] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:test3|Họ Tên:ewewq|Mô Tả:ewqe|Khóa:false|Loại Người Dùng:ewqe|
+[ERROR] 2017-04-20 14:27:22.674 [http-nio-8080-exec-1] SqlExceptionHelper - ORA-01400: cannot insert NULL into ("CCPS"."CWST_SYS_PERMISSION"."USERID")
+
+[INFO ] 2017-04-20 14:28:54.452 [http-nio-8080-exec-4] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:test3|Họ Tên:ewewq|Mô Tả:ewqe|Khóa:false|Loại Người Dùng:ewqe|
+[ERROR] 2017-04-20 14:29:13.429 [http-nio-8080-exec-4] SqlExceptionHelper - ORA-01400: cannot insert NULL into ("CCPS"."CWST_SYS_PERMISSION"."USERID")
+
+[INFO ] 2017-04-20 14:29:28.311 [http-nio-8080-exec-7] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:estrtr|Họ Tên:tre|Mô Tả:tre|Khóa:false|Loại Người Dùng:ret|
+[INFO ] 2017-04-20 15:30:16.590 [http-nio-8080-exec-7] LoginView - ho login successful
+[INFO ] 2017-04-20 15:30:32.826 [http-nio-8080-exec-10] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:aaaaaaa|Họ Tên:aaa|Mô Tả:aa|Khóa:false|Loại Người Dùng:null|
+[ERROR] 2017-04-20 15:31:09.376 [http-nio-8080-exec-10] SqlExceptionHelper - ORA-01400: cannot insert NULL into ("CCPS"."CWST_SYS_PERMISSION"."USERID")
+
+[INFO ] 2017-04-20 15:45:04.542 [http-nio-8080-exec-9] LoginView - ho login successful
+[INFO ] 2017-04-20 15:45:26.253 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:650|viewid:1|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:45:26.271 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:650|viewid:2|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:45:26.272 [http-nio-8080-exec-5] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:cccccc|Họ Tên:c|Mô Tả:cc|Khóa:false|Loại Người Dùng:cccc|
+[INFO ] 2017-04-20 15:45:34.184 [http-nio-8080-exec-2] UserManagerView - ho cap nhat permission - userid:650|viewid:1|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:45:34.199 [http-nio-8080-exec-2] UserManagerView - ho cap nhat permission - userid:650|viewid:2|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:45:34.199 [http-nio-8080-exec-2] UserManagerView - ho - Cap nhat du lieu tu form: id:650|Tên Đăng Nhập:cccccc|Họ Tên:c|Mô Tả:cc|Khóa:false|Loại Người Dùng:cccc|
+[INFO ] 2017-04-20 15:45:39.216 [http-nio-8080-exec-3] UserManagerView - ho cap nhat permission - userid:650|viewid:1|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:45:39.234 [http-nio-8080-exec-3] UserManagerView - ho cap nhat permission - userid:650|viewid:2|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:45:39.234 [http-nio-8080-exec-3] UserManagerView - ho - Cap nhat du lieu tu form: id:650|Tên Đăng Nhập:cccccc|Họ Tên:c|Mô Tả:cc|Khóa:false|Loại Người Dùng:cccc|
+[INFO ] 2017-04-20 15:52:45.616 [http-nio-8080-exec-9] LoginView - ho login successful
+[INFO ] 2017-04-20 15:53:01.550 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:400|viewid:1|view:false|delete:false|edit:false|checker:true
+[INFO ] 2017-04-20 15:53:01.565 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:400|viewid:2|view:true|delete:false|edit:true|checker:true
+[INFO ] 2017-04-20 15:53:01.580 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:400|viewid:3|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:01.595 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:400|viewid:4|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:01.607 [http-nio-8080-exec-5] UserManagerView - ho cap nhat permission - userid:400|viewid:5|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:01.607 [http-nio-8080-exec-5] UserManagerView - ho - Cap nhat du lieu tu form: id:400|Tên Đăng Nhập:hochecker|Họ Tên:hochecker|Mô Tả:Checker của HO|Khóa:false|Loại Người Dùng:checker|
+[INFO ] 2017-04-20 15:53:13.555 [http-nio-8080-exec-10] UserManagerView - ho cap nhat permission - userid:400|viewid:1|view:false|delete:false|edit:false|checker:true
+[INFO ] 2017-04-20 15:53:13.567 [http-nio-8080-exec-10] UserManagerView - ho cap nhat permission - userid:400|viewid:2|view:false|delete:false|edit:false|checker:true
+[INFO ] 2017-04-20 15:53:13.567 [http-nio-8080-exec-10] UserManagerView - ho - Cap nhat du lieu tu form: id:400|Tên Đăng Nhập:hochecker|Họ Tên:hochecker|Mô Tả:Checker của HO|Khóa:false|Loại Người Dùng:checker|
+[INFO ] 2017-04-20 15:53:21.396 [http-nio-8080-exec-7] UserManagerView - ho cap nhat permission - userid:650|viewid:1|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:21.408 [http-nio-8080-exec-7] UserManagerView - ho cap nhat permission - userid:650|viewid:2|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:21.420 [http-nio-8080-exec-7] UserManagerView - ho cap nhat permission - userid:650|viewid:3|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:21.432 [http-nio-8080-exec-7] UserManagerView - ho cap nhat permission - userid:650|viewid:4|view:true|delete:false|edit:true|checker:false
+[INFO ] 2017-04-20 15:53:21.444 [http-nio-8080-exec-7] UserManagerView - ho cap nhat permission - userid:650|viewid:5|view:false|delete:true|edit:false|checker:false
+[INFO ] 2017-04-20 15:53:21.456 [http-nio-8080-exec-7] UserManagerView - ho cap nhat permission - userid:650|viewid:6|view:false|delete:true|edit:false|checker:false
+[INFO ] 2017-04-20 15:53:21.456 [http-nio-8080-exec-7] UserManagerView - ho - Cap nhat du lieu tu form: id:650|Tên Đăng Nhập:cccccc|Họ Tên:c|Mô Tả:cc|Khóa:false|Loại Người Dùng:cccc|
+[INFO ] 2017-04-20 15:56:11.613 [http-nio-8080-exec-1] UserManagerView - ho cap nhat permission - userid:700|viewid:1|view:true|delete:false|edit:false|checker:false
+[INFO ] 2017-04-20 15:56:11.625 [http-nio-8080-exec-1] UserManagerView - ho cap nhat permission - userid:700|viewid:2|view:true|delete:false|edit:false|checker:false
+[INFO ] 2017-04-20 15:56:11.637 [http-nio-8080-exec-1] UserManagerView - ho cap nhat permission - userid:700|viewid:3|view:true|delete:false|edit:false|checker:false
+[INFO ] 2017-04-20 15:56:11.637 [http-nio-8080-exec-1] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:ccccccccasdsa|Họ Tên:sasad|Mô Tả:sad|Khóa:false|Loại Người Dùng:dsadsadsa|
+[INFO ] 2017-04-20 15:56:30.955 [http-nio-8080-exec-2] UserManagerView - ho cap nhat permission - userid:701|viewid:1|view:true|delete:false|edit:false|checker:false
+[INFO ] 2017-04-20 15:56:30.967 [http-nio-8080-exec-2] UserManagerView - ho cap nhat permission - userid:701|viewid:2|view:true|delete:false|edit:false|checker:false
+[INFO ] 2017-04-20 15:56:30.967 [http-nio-8080-exec-2] UserManagerView - ho - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:qwerty|Họ Tên:qwewqe|Mô Tả:wqe|Khóa:false|Loại Người Dùng:qwewqe|
+[INFO ] 2017-04-21 08:07:12.397 [http-nio-8080-exec-3] LoginView - chautk login successful
+[INFO ] 2017-04-21 08:08:10.198 [http-nio-8080-exec-6] LoginView - linhntd1 login successful
+[ERROR] 2017-04-21 08:09:40.763 [http-nio-8080-exec-6] LoginView - linhntd1 login - Value is of invalid type, got java.math.BigDecimal but java.lang.String was expected
+[INFO ] 2017-04-21 08:17:13.905 [http-nio-8080-exec-9] LoginView - linhntd1 login successful
+[ERROR] 2017-04-21 08:17:32.324 [http-nio-8080-exec-9] LoginView - linhntd1 login - Value is of invalid type, got java.math.BigDecimal but java.lang.String was expected
+[INFO ] 2017-04-21 08:22:31.419 [http-nio-8080-exec-7] LoginView - chautk login successful
+[ERROR] 2017-04-21 08:22:42.481 [http-nio-8080-exec-7] LoginView - chautk login - Value is of invalid type, got java.math.BigDecimal but java.lang.String was expected
+[INFO ] 2017-04-21 08:23:36.102 [http-nio-8080-exec-7] LoginView - chautk login successful
+[ERROR] 2017-04-21 08:23:47.051 [http-nio-8080-exec-7] LoginView - chautk login - Value is of invalid type, got java.math.BigDecimal but java.lang.String was expected
+[INFO ] 2017-04-21 08:24:29.977 [http-nio-8080-exec-7] LoginView - chautk login successful
+[ERROR] 2017-04-21 08:26:17.886 [http-nio-8080-exec-7] LoginView - chautk login - Value is of invalid type, got java.math.BigDecimal but java.lang.String was expected
+[INFO ] 2017-04-21 08:28:04.765 [http-nio-8080-exec-7] LoginView - chautk login successful
+[INFO ] 2017-04-21 08:31:36.513 [http-nio-8080-exec-6] LoginView - chautk login successful
+[INFO ] 2017-04-21 08:34:31.591 [http-nio-8080-exec-8] LoginView - chautk login successful
+[INFO ] 2017-04-21 08:36:19.597 [http-nio-8080-exec-7] LoginView - chautk login successful

@@ -1,0 +1,57 @@
+package cwst.com.entities;
+
+import java.io.Serializable;
+import javax.persistence.*;
+
+/**
+ * The primary key class for the CWST_SENDMAIL database table.
+ * 
+ */
+@Embeddable
+public class CwstSendmailPK implements Serializable {
+	//default serial version id, required for serializable classes.
+	private static final long serialVersionUID = 1L;
+
+	@Column(name="CASE_ID", insertable=false, updatable=false, unique=true, nullable=false, length=50)
+	private String caseId;
+
+	@Column(name="CRE_TMS", unique=true, nullable=false, precision=17)
+	private long creTms;
+
+	public CwstSendmailPK() {
+	}
+	public String getCaseId() {
+		return this.caseId;
+	}
+	public void setCaseId(String caseId) {
+		this.caseId = caseId;
+	}
+	public long getCreTms() {
+		return this.creTms;
+	}
+	public void setCreTms(long creTms) {
+		this.creTms = creTms;
+	}
+
+	public boolean equals(Object other) {
+		if (this == other) {
+			return true;
+		}
+		if (!(other instanceof CwstSendmailPK)) {
+			return false;
+		}
+		CwstSendmailPK castOther = (CwstSendmailPK)other;
+		return 
+			this.caseId.equals(castOther.caseId)
+			&& (this.creTms == castOther.creTms);
+	}
+
+	public int hashCode() {
+		final int prime = 31;
+		int hash = 17;
+		hash = hash * prime + this.caseId.hashCode();
+		hash = hash * prime + ((int) (this.creTms ^ (this.creTms >>> 32)));
+		
+		return hash;
+	}
+}

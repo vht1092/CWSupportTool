@@ -1,0 +1,131 @@
+[INFO ] 2020-05-20 15:27:31.876 [http-nio-8080-exec-3] LoginView - donvi login successful
+[INFO ] 2020-05-20 15:28:00.549 [http-nio-8080-exec-3] LoginView - donvichecker login successful
+[INFO ] 2020-05-20 15:28:03.680 [http-nio-8080-exec-9] UpdateBranchView - User donvichecker view Branch  info
+[INFO ] 2020-05-20 15:28:18.423 [http-nio-8080-exec-4] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 15:28:22.959 [http-nio-8080-exec-3] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 15:35:09.868 [http-nio-8080-exec-10] LoginView - donvichecker login successful
+[INFO ] 2020-05-20 15:36:08.673 [http-nio-8080-exec-3] UpdateBranchView - User donvichecker view Branch  info
+[INFO ] 2020-05-20 15:36:45.815 [http-nio-8080-exec-8] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 15:37:25.332 [http-nio-8080-exec-7] LoginView - ho login successful
+[INFO ] 2020-05-20 15:37:27.941 [http-nio-8080-exec-8] UpdateBranchView - User ho view Branch  info
+[INFO ] 2020-05-20 15:37:51.478 [http-nio-8080-exec-5] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 15:42:36.085 [http-nio-8080-exec-6] LoginView - donvichecker login successful
+[INFO ] 2020-05-20 15:42:38.337 [http-nio-8080-exec-7] UpdateBranchView - User donvichecker view Branch  info
+[INFO ] 2020-05-20 15:42:59.526 [http-nio-8080-exec-5] UpdateBranchView - donvichecker update_Branch_Code = 001. Update_Time: 2020/05/20 15:42:55
+[INFO ] 2020-05-20 15:43:05.813 [http-nio-8080-exec-5] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 16:13:21.561 [http-nio-8080-exec-3] LoginView - donvi login successful
+[INFO ] 2020-05-20 16:15:39.476 [http-nio-8080-exec-7] LoginView - donvichecker login successful
+[INFO ] 2020-05-20 16:15:44.040 [http-nio-8080-exec-10] UpdateBranchView - User donvichecker view Branch  info
+[INFO ] 2020-05-20 16:15:56.664 [http-nio-8080-exec-5] UpdateBranchView - donvichecker update_Branch_Code = 001empNewID = 80082000188empPhone = 0939292368brnAddress: 242 Cong Quynh, P.Pham Ngu Lao, Q.1  TP.HCMemail: vuongtb@scb.com.vn. Update_Time: 2020/05/20 16:15:56
+[INFO ] 2020-05-20 16:15:56.707 [http-nio-8080-exec-5] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 16:20:18.987 [http-nio-8080-exec-2] UpdateBranchView - donvichecker update_Branch_Code = 003empNewID = 341632264empPhone = 0961348836brnAddress: 76-78-80 Hai Thuong Lan Ong, P.10, Q.5  TP.HCMemail: nghiatt4@scb.com.vn. Update_Time: 2020/05/20 16:20:18
+[INFO ] 2020-05-20 16:20:18.994 [http-nio-8080-exec-2] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-20 16:21:02.505 [http-nio-8080-exec-1] UpdateBranchView - User donvichecker view Branch  info
+[INFO ] 2020-05-20 16:21:06.482 [http-nio-8080-exec-9] UpdateBranchView - donvichecker update_Branch_Code = 004empNewID = 024334787empPhone = 0933890462brnAddress: 1337-1339 Duong 3/2, P.16, Q.11  TP.HCMemail: thuytp@scb.com.vn. Update_Time: 2020/05/20 16:21:06
+[INFO ] 2020-05-20 16:21:06.493 [http-nio-8080-exec-9] UpdateBranchView - org.springframework.orm.jpa.JpaSystemException: Could not extract result set metadata; nested exception is org.hibernate.HibernateException: Could not extract result set metadata
+[INFO ] 2020-05-30 10:39:23.400 [http-nio-8080-exec-5] LoginView - donvi login successful
+[INFO ] 2020-05-30 11:54:33.513 [http-nio-8080-exec-2] LoginView - donvi login successful
+[INFO ] 2020-05-30 23:11:48.901 [http-nio-8080-exec-3] LoginView - donvi login successful
+[INFO ] 2020-05-30 23:18:01.530 [http-nio-8080-exec-5] LoginView - donvi login successful
+[INFO ] 2020-05-30 23:18:38.944 [http-nio-8080-exec-3] LoginView - ho login successful
+[INFO ] 2020-05-30 23:22:27.708 [http-nio-8080-exec-2] LoginView - khoanm login successful
+[INFO ] 2020-05-30 23:26:26.722 [http-nio-8080-exec-10] LoginView - donvi login successful
+[INFO ] 2020-06-02 13:32:38.545 [http-nio-8080-exec-2] LoginView - phuoclh1 login successful
+[ERROR] 2020-06-02 13:32:55.783 [http-nio-8080-exec-2] LoginView - duyentth4 login - null
+[ERROR] 2020-06-02 13:42:45.885 [http-nio-8080-exec-9] LoginView - duyentth4 login - null
+[INFO ] 2020-06-02 13:43:12.028 [http-nio-8080-exec-4] LoginView - phuoclh1 login successful
+[INFO ] 2020-06-02 13:46:32.170 [http-nio-8080-exec-9] LoginView - phuoclh1 login successful
+[ERROR] 2020-06-02 13:47:29.097 [http-nio-8080-exec-10] LoginView - duyentth4 login - result returns more than one elements; nested exception is javax.persistence.NonUniqueResultException: result returns more than one elements
+[INFO ] 2020-06-02 13:50:28.265 [http-nio-8080-exec-3] LoginView - duyentth4 login successful
+[INFO ] 2020-06-12 09:22:51.492 [http-nio-8080-exec-6] LoginView - ho login successful
+[INFO ] 2020-06-12 09:23:12.871 [http-nio-8080-exec-7] LoginView - donvichecker login successful
+[INFO ] 2020-06-12 09:49:39.563 [http-nio-8080-exec-3] LoginView - donvi login successful
+[INFO ] 2020-06-12 09:50:10.711 [http-nio-8080-exec-1] LoginView - khoanm login successful
+[INFO ] 2020-06-12 09:50:28.948 [http-nio-8080-exec-8] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,200|Tên Đăng Nhập:donvi|Họ Tên:donvi|Mô Tả:donvi|Khóa:false|Loại Người Dùng:DONVI|
+[INFO ] 2020-06-12 09:50:41.508 [http-nio-8080-exec-7] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,201|Tên Đăng Nhập:donvichecker|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:DONVICHECKER|
+[INFO ] 2020-06-12 09:50:48.165 [http-nio-8080-exec-8] LoginView - ho login successful
+[INFO ] 2020-06-12 09:50:55.700 [http-nio-8080-exec-7] LoginView - khoanm login successful
+[INFO ] 2020-06-12 09:56:10.116 [http-nio-8080-exec-10] LoginView - ho login successful
+[INFO ] 2020-06-12 09:57:34.801 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:1920215|custname:TRANG THANH KHAI|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:34.853 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:0110416|custname:NGUYEN NGUYEN CHUNG|crdtype:MDTC8
+[INFO ] 2020-06-12 09:57:34.878 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:1917575|custname:NGUYEN HONG CAM TU|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:34.917 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:1214769|custname:NGUYEN THI THUY TRANG|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:34.939 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:1920292|custname:NGUYEN TRINH THANH TAM|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:34.981 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:0813357|custname:NGUYEN TUAN THANH|crdtype:VSDB1
+[INFO ] 2020-06-12 09:57:35.008 [http-nio-8080-exec-7] CardDistributionView - ho - thuc hien TOMK - cif:0753337|custname:DO NGAN HA|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:57.420 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:1920215|custname:TRANG THANH KHAI|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:57.433 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:0110416|custname:NGUYEN NGUYEN CHUNG|crdtype:MDTC8
+[INFO ] 2020-06-12 09:57:57.467 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:1917575|custname:NGUYEN HONG CAM TU|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:57.483 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:1214769|custname:NGUYEN THI THUY TRANG|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:57.502 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:1920292|custname:NGUYEN TRINH THANH TAM|crdtype:VSDB
+[INFO ] 2020-06-12 09:57:57.517 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:0813357|custname:NGUYEN TUAN THANH|crdtype:VSDB1
+[INFO ] 2020-06-12 09:57:57.533 [http-nio-8080-exec-2] CardDistributionView - ho - khoa du lieu - cif:0753337|custname:DO NGAN HA|crdtype:VSDB
+[INFO ] 2020-06-12 09:58:09.367 [http-nio-8080-exec-3] LoginView - hochecker login successful
+[INFO ] 2020-06-12 09:58:34.295 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:1920215|custname:TRANG THANH KHAI|crdtype:VSDB
+[INFO ] 2020-06-12 09:58:34.320 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:0110416|custname:NGUYEN NGUYEN CHUNG|crdtype:MDTC8
+[INFO ] 2020-06-12 09:58:34.340 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:1917575|custname:NGUYEN HONG CAM TU|crdtype:VSDB
+[INFO ] 2020-06-12 09:58:34.361 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:1214769|custname:NGUYEN THI THUY TRANG|crdtype:VSDB
+[INFO ] 2020-06-12 09:58:34.380 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:1920292|custname:NGUYEN TRINH THANH TAM|crdtype:VSDB
+[INFO ] 2020-06-12 09:58:34.397 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:0813357|custname:NGUYEN TUAN THANH|crdtype:VSDB1
+[INFO ] 2020-06-12 09:58:34.412 [http-nio-8080-exec-7] CardDistributionView - hochecker - Duyet du lieu - cif:0753337|custname:DO NGAN HA|crdtype:VSDB
+[INFO ] 2020-06-12 09:58:45.843 [http-nio-8080-exec-7] LoginView - donvi login successful
+[ERROR] 2020-06-12 09:59:54.600 [http-nio-8080-exec-2] LoginView - dovichecker login - Bad credentials
+[INFO ] 2020-06-12 10:00:01.398 [http-nio-8080-exec-7] LoginView - donvichecker login successful
+[INFO ] 2020-06-12 10:01:04.774 [http-nio-8080-exec-2] CardDistributionView - donvi - thuc hien BRANCHREC - cif:1920215|custname:TRANG THANH KHAI|crdtype:VSDB
+[INFO ] 2020-06-12 10:01:04.802 [http-nio-8080-exec-2] CardDistributionView - donvi - thuc hien BRANCHREC - cif:0110416|custname:NGUYEN NGUYEN CHUNG|crdtype:MDTC8
+[INFO ] 2020-06-12 10:55:39.996 [http-nio-8080-exec-10] LoginView - donvi login successful
+[ERROR] 2020-06-12 11:42:10.847 [http-nio-8080-exec-8] LoginView - phuoclh1 login - Bad credentials
+[INFO ] 2020-06-12 11:42:34.539 [http-nio-8080-exec-3] LoginView - khoanm login successful
+[INFO ] 2020-06-12 11:42:57.878 [http-nio-8080-exec-6] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,901|Tên Đăng Nhập:donvi|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:DONVI|
+[INFO ] 2020-06-12 11:43:04.281 [http-nio-8080-exec-1] LoginView - donvi login successful
+[INFO ] 2020-06-12 13:06:01.036 [http-nio-8080-exec-7] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,901|Tên Đăng Nhập:donvi|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:DONVI|
+[INFO ] 2020-06-12 13:06:27.165 [http-nio-8080-exec-7] LoginView - donvi login successful
+[INFO ] 2020-06-12 13:14:44.519 [http-nio-8080-exec-7] LoginView - ho login successful
+[INFO ] 2020-06-12 13:45:00.220 [http-nio-8080-exec-5] LoginView - ho login successful
+[INFO ] 2020-06-12 14:08:37.039 [http-nio-8080-exec-4] LoginView - ho login successful
+[INFO ] 2020-06-12 16:55:43.459 [http-nio-8080-exec-6] LoginView - ho login successful
+[INFO ] 2020-06-18 14:51:01.559 [http-nio-8080-exec-3] LoginView - phuoclh1 login successful
+[INFO ] 2020-06-26 14:59:51.222 [http-nio-8080-exec-3] LoginView - phuoclh1 login successful
+[INFO ] 2020-06-26 15:07:16.685 [http-nio-8080-exec-2] LoginView - phuoclh1 login successful
+[INFO ] 2020-06-26 15:16:01.660 [http-nio-8080-exec-6] LoginView - phuoclh1 login successful
+[ERROR] 2020-06-26 16:24:41.364 [http-nio-8080-exec-6] LoginView - phuoclh1 login - Bad credentials
+[INFO ] 2020-06-26 16:24:46.849 [http-nio-8080-exec-7] LoginView - phuoclh1 login successful
+[INFO ] 2020-06-26 16:25:03.628 [http-nio-8080-exec-2] UserManagerView - phuoclh1 - Cap nhat du lieu tu form: id:1|Tên Đăng Nhập:phuoclh1|Họ Tên:Le Huu Phuoc|Mô Tả:mvvn|Khóa:false|Loại Người Dùng:SUPERADMIN|
+[INFO ] 2020-07-07 15:28:03.027 [http-nio-8080-exec-3] LoginView - phuoclh1 login successful
+[INFO ] 2020-07-07 16:57:14.501 [http-nio-8080-exec-4] LoginView - phuoclh1 login successful
+[ERROR] 2020-08-04 17:18:31.109 [http-nio-8080-exec-4] LoginView - duyentth4 login - result returns more than one elements; nested exception is javax.persistence.NonUniqueResultException: result returns more than one elements
+[INFO ] 2020-08-04 17:33:09.626 [http-nio-8080-exec-1] LoginView - duyentth4 login successful
+[INFO ] 2020-08-07 15:49:22.965 [http-nio-8080-exec-1] LoginView - phuoclh1 login successful
+[INFO ] 2020-08-11 14:45:02.860 [http-nio-8080-exec-8] LoginView - phuoclh1 login successful
+[INFO ] 2020-08-17 17:04:41.837 [http-nio-8080-exec-3] LoginView - phuoclh1 login successful
+[ERROR] 2020-08-27 09:39:20.285 [http-nio-8080-exec-4] LoginView - tanvh1 login - Bad credentials
+[INFO ] 2020-08-27 09:39:29.750 [http-nio-8080-exec-3] LoginView - HO login successful
+[INFO ] 2020-08-27 09:40:40.054 [http-nio-8080-exec-3] CardDistributionView - ho - thuc hien TOMK - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:VSDB
+[INFO ] 2020-08-27 09:40:40.088 [http-nio-8080-exec-3] CardDistributionView - ho - thuc hien TOMK - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDTC7
+[INFO ] 2020-08-27 09:40:40.104 [http-nio-8080-exec-3] CardDistributionView - ho - thuc hien TOMK - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDSC2
+[INFO ] 2020-08-27 09:41:00.238 [http-nio-8080-exec-1] CardDistributionView - ho - khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:VSDB
+[INFO ] 2020-08-27 09:41:00.262 [http-nio-8080-exec-1] CardDistributionView - ho - khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDTC7
+[INFO ] 2020-08-27 09:41:00.276 [http-nio-8080-exec-1] CardDistributionView - ho - khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDSC2
+[INFO ] 2020-08-27 09:41:41.909 [http-nio-8080-exec-8] LoginView - HOCHECKER login successful
+[INFO ] 2020-08-27 09:42:16.536 [http-nio-8080-exec-4] CardDistributionView - hochecker - mo khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:VSDB
+[INFO ] 2020-08-27 09:42:16.900 [http-nio-8080-exec-4] CardDistributionView - hochecker - mo khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDTC7
+[INFO ] 2020-08-27 09:42:17.250 [http-nio-8080-exec-4] CardDistributionView - hochecker - mo khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDSC2
+[INFO ] 2020-08-27 09:42:42.905 [http-nio-8080-exec-5] CardDistributionView - ho - thuc hien TOMK - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:VSDB
+[INFO ] 2020-08-27 09:42:42.917 [http-nio-8080-exec-5] CardDistributionView - ho - thuc hien TOMK - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDTC7
+[INFO ] 2020-08-27 09:42:42.930 [http-nio-8080-exec-5] CardDistributionView - ho - thuc hien TOMK - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDSC2
+[INFO ] 2020-08-27 09:42:47.994 [http-nio-8080-exec-6] CardDistributionView - ho - khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:VSDB
+[INFO ] 2020-08-27 09:42:48.007 [http-nio-8080-exec-6] CardDistributionView - ho - khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDTC7
+[INFO ] 2020-08-27 09:42:48.019 [http-nio-8080-exec-6] CardDistributionView - ho - khoa du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDSC2
+[INFO ] 2020-08-27 09:42:56.440 [http-nio-8080-exec-3] CardDistributionView - hochecker - Duyet du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:VSDB
+[INFO ] 2020-08-27 09:42:56.455 [http-nio-8080-exec-3] CardDistributionView - hochecker - Duyet du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDTC7
+[INFO ] 2020-08-27 09:42:56.470 [http-nio-8080-exec-3] CardDistributionView - hochecker - Duyet du lieu - cif:1920171|custname:PHAM THI MINH KHUE|crdtype:MDSC2
+[INFO ] 2020-08-27 09:43:29.334 [http-nio-8080-exec-3] LoginView - DONVI login successful
+[INFO ] 2020-08-27 09:44:09.847 [http-nio-8080-exec-10] LoginView - KHOANM login successful
+[INFO ] 2020-08-27 09:44:40.033 [http-nio-8080-exec-4] UserManagerView - khoanm - Cap nhat du lieu tu form: id:0|Tên Đăng Nhập:donvi|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:null|
+[INFO ] 2020-08-27 09:45:00.835 [http-nio-8080-exec-10] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,200|Tên Đăng Nhập:donvi|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:null|
+[INFO ] 2020-08-27 09:45:16.846 [http-nio-8080-exec-3] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,201|Tên Đăng Nhập:donvichecker|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:DONVICHECKER|
+[INFO ] 2020-08-27 09:45:27.993 [http-nio-8080-exec-3] LoginView - donvi login successful
+[INFO ] 2020-08-27 09:47:28.587 [http-nio-8080-exec-5] LoginView - KHOANM login successful
+[INFO ] 2020-08-27 09:47:31.485 [http-nio-8080-exec-10] UpdateBranchView - User khoanm view Branch  info
+[INFO ] 2020-08-27 09:48:26.667 [http-nio-8080-exec-7] UserManagerView - khoanm - Cap nhat du lieu tu form: id:102,200|Tên Đăng Nhập:donvi|Họ Tên:null|Mô Tả:null|Khóa:false|Loại Người Dùng:DONVI|
+[INFO ] 2020-08-27 09:49:11.209 [http-nio-8080-exec-6] LoginView - donvi login successful
